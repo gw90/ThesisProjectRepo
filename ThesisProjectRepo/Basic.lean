@@ -11,6 +11,7 @@ import Mathlib.Algebra.Star.Subalgebra
 section
 variable (α : Type*) [A : CStarAlgebra α] -- unital complex C*-algebra
 variable [PartialOrder α] [PartialOrder ℂ]
+variable [StarOrderedRing α] -- Figure out what this does/means
 variable (a b c : α)
 variable [IsStarNormal c]
 
@@ -23,7 +24,6 @@ variable [IsStarNormal c]
 #check star a
 #check spectrum ℂ a
 #check CStarAlgebra.approximateUnit
-
 #check StrongDual ℂ α
 
 example : 2 ∉ {x : ℝ | x = 1} := by simp
@@ -94,5 +94,39 @@ def whateverthisis {G : Type*} [CStarAlgebra G] (H : Subring G) : Subring G wher
 
 
 example {G : Type*} [CStarAlgebra G] (H : Subring G) : Ring H := inferInstance
+
+
+/-
+def myInner := fun (f : A →ₚ[ℂ] ℂ) (b : A) (a : A) => f (star b * a)
+#check (myInner f : A → A → ℂ) -- A → A → ℂ
+#check (myInner f : A → A → ℂ) p -- A → ℂ
+-- parameter a should be linear
+def myInnerHelper (f : A →ₚ[ℂ] ℂ) (a : A) : LinearMap (RingHom.id ℂ) A ℂ where
+  toFun := (myInner f : A → A → ℂ) a -- A → ℂ
+  map_add' := by
+    intro x y
+    dsimp [myInner]
+    rw [mul_add]
+    exact map_add f (star a * x) (star a * y)
+  map_smul' := by
+    intro m x
+    dsimp [myInner, RingHom.id]
+    simp
+#check (myInnerHelper f) p -- A →ₗ[ℂ] ℂ
+-- paramter b should be conjugate linear
+def mySesquiLinear (f : A →ₚ[ℂ] ℂ) : LinearMap (starRingEnd ℂ) A (A →ₗ[ℂ] ℂ) where
+  toFun := (myInnerHelper f)
+  map_add' := by
+    intro x y
+    ext a
+    dsimp [myInnerHelper, myInner]
+    rw [star_add, add_mul]
+    exact map_add f (star x * a) (star y * a)
+  map_smul' := by
+    intro m x
+    ext a
+    simp [myInnerHelper, myInner]
+#check mySesquiLinear f -- A →ₗ⋆[ℂ] A →ₗ[ℂ] ℂ
+-/
 
 end

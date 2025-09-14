@@ -9,112 +9,93 @@ import Mathlib.Analysis.Normed.Module.Basic
 import Mathlib.LinearAlgebra.BilinearMap
 import Mathlib.Algebra.Module.LinearMap.Defs
 import Mathlib.Algebra.Module.LinearMap.Star -- conjugate linear maps
+import Mathlib.Analysis.CStarAlgebra.Module.Defs
+import Mathlib.Analysis.InnerProductSpace.Defs
+import Mathlib.Data.Complex.Basic
+import Mathlib.Analysis.Complex.Order
 
-variable {A : Type*} [CStarAlgebra A] [PartialOrder A] [PartialOrder ℂ]
-variable [NormedAlgebra ℂ A] -- what does this do? Is it necessary?
-variable [StarOrderedRing A] -- Figure out what this does/means
+variable {A : Type*} [CStarAlgebra A] [PartialOrder A] [PartialOrder ℂ] [StarOrderedRing A]
 variable (f : A →ₚ[ℂ] ℂ)
 variable (p : A) (q : A) -- for experimentation. remove later
 set_option linter.unusedSectionVars false -- remove this at the end
--- maybe not the right Cauchy-Schwartz at Mathlib.Analysis.InnerProductSpace.Basic
-theorem posEl (a : A) : 0 ≤ (star a) * a := by
-  exact star_mul_self_nonneg a
 
-theorem posMeaning (a : A) (h : 0 ≤ a) (f : A →ₚ[ℂ] ℂ) : 0 ≤ f a := by
-  exact PositiveLinearMap.map_nonneg f h
+open ComplexConjugate
+open ComplexOrder
 
-theorem posposEl (a : A) : 0 ≤ f (star a * a) := by
-  have : 0 ≤ star a * a := star_mul_self_nonneg a
-  exact PositiveLinearMap.map_nonneg f this
--- just change RingHom.id to starRingEnd ?
--- The sesquilinear map I want:
--- https://leanprover-community.github.io/mathlib4_docs/Mathlib/Analysis/CStarAlgebra/Module/Defs.html#CStarModule.inner%E2%82%9B%E2%82%97
-def own' := fun [b : A] [f : A →ₚ[ℂ] ℂ] (a : A) => f (star b * a)
-#check own'
-#check LinearMap (RingHom.id ℂ) A ℂ
-def helperMap {b : A} {f : A →ₚ[ℂ] ℂ} : LinearMap (RingHom.id ℂ) A ℂ where
-  toFun := fun (a : A) => f (star b * a)
-  map_add' := by
-    intro x y
-    rw [left_distrib]
-    exact map_add f (star b * x) (star b * y)
-  map_smul' := by simp
+lemma aupetit_6_2_15lemma (x y : A) (l : ℂ) :
+  0 ≤ f (x * star x) + l * f (y * star x) + (conj l) * f (x * star y)
+    + l * (conj l) * f (y * star y) := by
+  have hnonneg :=  PositiveLinearMap.map_nonneg f (mul_star_self_nonneg (x + (l • y)))
+  rw [add_mul, star_add, mul_add, mul_add] at hnonneg
+  simp at hnonneg
+  have h : f (x * star x) + (starRingEnd ℂ) l * f (x * star y)
+      + (l * f (y * star x) + (starRingEnd ℂ) l * (l * f (y * star y)))
+    = f (x * star x) + l * f (y * star x) + (starRingEnd ℂ) l * f (x * star y)
+      + l * (starRingEnd ℂ) l * f (y * star y) := by ring
+  rw [← h]
+  assumption
 
-#check helperMap
+theorem aupetit_6_2_15i (x : A) : f (star x) = conj (f x) := by
+  #check aupetit_6_2_15lemma f x 1 1
+  -- show that f is StarRingEquiv
+  sorry
 
--- the inner map should be linear, the outer map should be conjguate linear
--- this means first paramter is conjguate linear, second is linear
+lemma fOfxStarxIsReal (x : A) : (f (x * star x)).re = f (x * star x) := by
+  have xstarmul : star (x * star x) = x * star x := by exact star_mul_star x x
+  have fstareqfnostar : f (star (x * star x)) = f (x * star x)
+    := by exact congrArg (⇑f) xstarmul
+  have fstareqconj: f (star (x * star x)) = conj (f (x * star x))
+    := by exact aupetit_6_2_15i f (x * star x)
+  rw [fstareqconj] at fstareqfnostar
+  have fxisreal := Complex.conj_eq_iff_re.mp fstareqfnostar
+  exact fxisreal
 
-variable (h : A →ₚ[ℂ] ℂ)
-def myInner := fun (f : A →ₚ[ℂ] ℂ) (b : A) (a : A) => f (star b * a)
-#check (myInner f : A → A → ℂ) -- A → A → ℂ
-#check (myInner f : A → A → ℂ) p -- A → ℂ
--- parameter a should be linear
-def myInnerHelper (f : A →ₚ[ℂ] ℂ) (a : A) : LinearMap (RingHom.id ℂ) A ℂ where
-  toFun := (myInner f : A → A → ℂ) a -- A → ℂ
-  map_add' := by
-    intro x y
-    dsimp [myInner]
-    rw [mul_add]
-    exact map_add f (star a * x) (star a * y)
-  map_smul' := by
-    intro m x
-    dsimp [myInner, RingHom.id]
+lemma fOfxStarxHas0Im (x : A) : (f (x * star x)).im = 0 := by
+  have xstarmul : star (x * star x) = x * star x := by exact star_mul_star x x
+  have fstareqfnostar : f (star (x * star x)) = f (x * star x)
+    := by exact congrArg (⇑f) xstarmul
+  have fstareqconj: f (star (x * star x)) = conj (f (x * star x))
+    := by exact aupetit_6_2_15i f (x * star x)
+  rw [fstareqconj] at fstareqfnostar
+  have fxisreal := Complex.conj_eq_iff_im.mp fstareqfnostar
+  exact fxisreal
+
+theorem aupetit_6_2_15ii (x y : A) : norm (f (x * star y)) ≤ f (x * star x) * f (y * star y) := by
+  have := aupetit_6_2_15lemma f x y (f (x * star y)/((1+2^(1/2))*f (y * star y)))
+  have fxisreal := fOfxStarxIsReal f x
+  have fyisreal := fOfxStarxIsReal f y
+
+  by_cases fzero : f (x * star y) = 0
+  . have fxnonneg := PositiveLinearMap.map_nonneg f (mul_star_self_nonneg x)
+    have fynonneg := PositiveLinearMap.map_nonneg f (mul_star_self_nonneg y)
+    rw [fzero]
+    -- have refxnonneg := fxnonneg
+    -- rw [← fxisreal] at refxnonneg
+    -- have zisz : (0 : ℂ) = (0 : ℝ) := by exact rfl
+    -- rw [zisz, ← fxisreal] at fxnonneg
+    -- rw [← fxisreal, ← fyisreal]
     simp
-#check (myInnerHelper f) p -- A →ₗ[ℂ] ℂ
--- paramter b should be conjugate linear
-def mySesquiLinear (f : A →ₚ[ℂ] ℂ) {b : A} : LinearMap (starRingEnd ℂ) A (A →ₗ[ℂ] ℂ) where
-  toFun := (myInnerHelper f)
-  map_add' := by
-    intro x y
-    ext a
-    dsimp [myInnerHelper, myInner]
-    rw [star_add, add_mul]
-    exact map_add f (star x * a) (star y * a)
-  map_smul' := by
-    intro m x
-    ext a
-    simp [myInnerHelper, myInner]
-
-#check mySesquiLinear f
+    have fxim0 : (f (x * star x)).im = (0 : ℝ) := by exact fOfxStarxHas0Im f x
+    have fyim0 : (f (y * star y)).im = (0 : ℝ) := by exact fOfxStarxHas0Im f y
+    have fximeqfyim := fxim0
+    rw [← fyim0] at fximeqfyim
+    #check Complex.le_def.mp fxnonneg
+    have : (0 : ℂ).re ≤ (f (x * star x)).re := by sorry
+    sorry
+  sorry
 
 
--- define whole function (f a b) and then show that (f a) is linear to show (f)
--- is bilinear/conjugate linear
+-- Begin code from Eric Wieser
+-- noncomputability should be fixed in by Eric Wieser's bug fix
+noncomputable def mySesquilinear (f : A →ₚ[ℂ] ℂ) : A →ₗ⋆[ℂ] A →ₗ[ℂ] ℂ :=
+  (LinearMap.mul ℂ A).comp (starLinearEquiv ℂ (A := A) : A →ₗ⋆[ℂ] A) |>.compr₂ₛₗ f
 
-#check LinearMap.BilinForm ℂ A
-#check fun (a : A) => fun (b : A) => f (star b * a)
-#check fun (a : A) => fun (b : A) => f (star b * a)
-open PositiveLinearMapClass
-#check toPositiveLinearMap f
-#check LinearMap (RingHom.id ℂ) A ℂ
-#check A →ₗ[ℂ] A
-#check ((f : A →ₚ[ℂ] ℂ) : A →ₗ[ℂ] ℂ)
+@[simp]
+theorem mySesquilinear_apply (f : A →ₚ[ℂ] ℂ) (x y : A) :
+  mySesquilinear f x y = f (star x * y) := rfl
+-- End code from Eric Wieser
 
-#check fun (a : A) => (fun (b : A) => f b)
-#check fun (a : A) => ((f : A →ₚ[ℂ] ℂ) : A →ₗ[ℂ] ℂ)
-#check fun (a : A) (b : A) => f (star b * a)
-#check fun (b : A) => helperMap
-
-
--- first show that f(star ⬝ * a) is linear
--- maybe constructing for linearity in the wrong paramter
--- (was incorrectly considering the conjugate linear b)
--- Mathlib.Algebra.Star.Basic - read up on conjugate linear maps
-/-
-def glorp : LinearMap.BilinForm ℂ A where
-  toFun := sorry
-  map_add' := sorry
-  map_smul' := sorry
-
--- this is probably the theorem I need to math 138 8.0.10
-#check LinearMap.BilinForm.apply_mul_apply_le_of_forall_zero_le
-
-noncomputable
-def semiInnerf := LinearMap.mk₂ ℂ (fun (a : A) (b : A) => f (star b * a))
-  sorry sorry sorry sorry sorry sorry
--/
-lemma add_mem_helper (a b : A) : a ∈ {a | f (star a * a) = 0}
+lemma add_mem_helper (f : A →ₚ[ℂ] ℂ) (a b : A) : a ∈ {a | f (star a * a) = 0}
   → b ∈ {a | f (star a * a) = 0} → a + b ∈ {a | f (star a * a) = 0} := by
   simp
   intro h1 h2
@@ -126,21 +107,30 @@ lemma add_mem_helper (a b : A) : a ∈ {a | f (star a * a) = 0}
   ring_nf
   sorry
 
-lemma smul_mem_helper (b : A) {a : A} : a ∈ {a | f (star a * a) = 0}
+lemma myCS (f : A →ₚ[ℂ] ℂ) (a b : A) :
+  norm (f (star b * a)) ^ 2 ≤ f (star b * b) * f (star a * a) := by
+  rw [← mySesquilinear_apply f a a, ← mySesquilinear_apply f b b, ← mySesquilinear_apply f b a]
+  sorry
+
+lemma smul_mem_helper (f : A →ₚ[ℂ] ℂ) (b : A) {a : A} : a ∈ {a | f (star a * a) = 0}
   → b • a ∈ {a | f (star a * a) = 0} := by
-  simp
+  rw [Set.mem_setOf, Set.mem_setOf]
   intro h
+  #check mySesquilinear_apply f a a
+  rw [← mySesquilinear_apply f a a] at h
+  rw [← mySesquilinear_apply f (b • a) (b • a)]
   sorry
 
 -- From Aupetit leamm 6.2.18
-def N : Ideal A where
+-- should probably use module ideal? see 10.1.1 MIL
+def N (f : A →ₚ[ℂ] ℂ) : Ideal A where
   carrier := {a : A | f (star a * a) = 0}
   add_mem' := by intro a b; exact add_mem_helper f a b
   zero_mem' := by simp;
   smul_mem' := by intro b; exact smul_mem_helper f b
 
 --theorem aupetit6_2_18_closed : IsClosed {a : A | f (star a * a) = 0} := by sorry
-
+variable (f : A →ₚ[ℂ] ℂ)
 #check N f
 #check Ideal.coe_closure (N f)
 #check (N f).closure
