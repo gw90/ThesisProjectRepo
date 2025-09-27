@@ -80,8 +80,11 @@ lemma fOfxStarxHas0Im (x : A) : (f (x * star x)).im = 0 := by
 
 example (c : ℂ) : norm c ^ 2 = c * conj c := by exact Eq.symm (mul_conj' c)
 
-lemma aupetit_6_2_15iilemma (t : ℝ) (x y : A) (h : f (x * star y) ≠ 0) :
-  0 ≤ f (x * star x) + 2 * t * norm (f ( x * star y)) + t^2 * f (y * star y) := by
+lemma aupetit_6_2_15iilemma (t : ℂ) (ht : t = conj t) (x y : A) (h : f (x * star y) ≠ 0) :
+  -- initally did the proof with (t : ℝ), but then when I changed it, it immediately hilighted
+  -- the step that failed, so I could go, rigirously repair the proof step by step
+  -- TO-DO: re-write with a calculation proof
+  0 ≤ f (x * star x) + 2 * t * norm (f (x * star y)) + t^2 * f (y * star y) := by
   have := aupetit_6_2_15lemma f x y ((t * f (x * star y))/(norm (f (x * star y))))
   have fact := mul_conj' (f (x * star y))
   have fact2 : f (y * star x) = f (star (x * star y)) := by simp
@@ -101,6 +104,7 @@ lemma aupetit_6_2_15iilemma (t : ℝ) (x y : A) (h : f (x * star y) ≠ 0) :
   have fact9 : (t : ℂ) * ↑‖f (x * star y)‖ ^ 2 / ↑‖f (x * star y)‖ = ↑t * ↑‖f (x * star y)‖ := by
     field_simp
   have fact10 := Eq.trans fact8 fact9
+  rw [ht] at this
   simp [fact10] at this
   have fact11 :
     ↑t * f (x * star y) / ↑‖f (x * star y)‖ *
@@ -108,6 +112,7 @@ lemma aupetit_6_2_15iilemma (t : ℝ) (x y : A) (h : f (x * star y) ≠ 0) :
       f (y * star y) =
       (↑t^2 * (f (x * star y) * (starRingEnd ℂ) (f (x * star y))))/ ↑‖f (x * star y)‖ ^ 2 *
       f (y * star y) := by field_simp
+  rw [← ht] at this
   rw [fact11] at this
   simp [fact] at this
   field_simp at this
@@ -124,19 +129,52 @@ theorem aupetit_6_2_15ii (x y : A) :
   have fyy := fxx_eq_conj f y
   have fxnonneg := PositiveLinearMap.map_nonneg f (mul_star_self_nonneg x)
   have fynonneg := PositiveLinearMap.map_nonneg f (mul_star_self_nonneg y)
-  by_cases fzero : f (x * star y) = 0
+
+  have prodreal :
+    (1 + 2^(1/2))*f (y * star y) = conj ((1 + 2^(1/2))*f (y * star y)) := by simp [fyy]
+  have prodIm0 : ((1 + 2^(1/2))*f (y * star y)).im = 0 := conj_eq_iff_im.mp (id (Eq.symm prodreal))
+  have invIm0 : (((1 + 2^(1/2))*f (y * star y))⁻¹).im = 0 := by
+    simp [Complex.inv_im]
+    left
+    exact fOfxStarxHas0Im f y
+
+  have normIm0 : (norm (f (x * star y)) :ℂ ).im = 0 := by exact rfl
+  have fullProdIm0 := Complex.smul_im (norm (f (x * star y))) (((1 + 2^(1/2))*f (y * star y))⁻¹)
+  rw [invIm0] at fullProdIm0
+  simp at fullProdIm0
+  rcases fullProdIm0 with h1 | h2 | h3
   . have two_ne_zero : 2 ≠ 0 := by exact Ne.symm (Nat.zero_ne_add_one 1)
-    rw [fzero, norm_zero]
+    rw [h1, norm_zero]
     norm_num
     exact Left.mul_nonneg fxnonneg fynonneg
-  have : (0 : ℂ).re ≤ (f (x * star x)).re := by exact re_le_re fxnonneg
-  have : (0 : ℂ).re ≤ (f (y * star y)).re := by exact re_le_re fynonneg
-  push_neg at fzero
-  have non_zero_norm : norm (f (x * star y)) ≠ 0 := by exact norm_ne_zero_iff.mpr fzero
-  have cursed := aupetit_6_2_15lemma f x y
-    ((norm (f (x * star y))/((1+2^(1/2))*f (y * star y))) * (f (x * star y)/norm (f (x * star y))))
-  simp [non_zero_norm, fyy] at cursed -- fxx not needed
-  -- TO-DO: finish this
+  . sorry
+  sorry
+
+  /-
+  have eqOwnConj :
+  have
+    aupetit_6_2_15iilemma (f) (norm (f (x * star y))/((1 + 2^(1/2))*f (y * star y))) eqOwnConj x y
+    fzero
+
+  rw [add_assoc, add_comm] at subst
+  have step1 := tsub_le_iff_right.mpr subst
+  simp at step1
+  norm_num at step1
+  rw [← mul_assoc] at step1
+  nth_rw 1 [mul_assoc] at step1
+  have step2 := by calc
+    -f (x * star x) ≤
+  2 * (↑‖f (x * star y)‖ / 2) * (f (y * star y) * ↑‖f (x * star y)‖) +
+    (↑‖f (x * star y)‖ / 2 * f (y * star y)) ^ 2 * f (y * star y) := step1
+    _ = ‖f (x * star y)‖ * (f (y * star y) * ↑‖f (x * star y)‖) +
+    (↑‖f (x * star y)‖ / 2 * f (y * star y)) ^ 2 * f (y * star y) := by congr; field_simp
+    _ = ‖f (x * star y)‖^2 * f (y * star y) +
+    (↑‖f (x * star y)‖ / 2 * f (y * star y)) ^ 2 * f (y * star y) := by ring
+    _ = ‖f (x * star y)‖^2 * f (y * star y) +
+    (↑‖f (x * star y)‖ / 2)^2 * f (y * star y)) ^ 2 * f (y * star y) := by ring
+  -/
+
+
   sorry
 
 
