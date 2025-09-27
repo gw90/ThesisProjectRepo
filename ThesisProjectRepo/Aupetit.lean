@@ -1,7 +1,10 @@
+import Mathlib.Tactic.LinearCombination
 import Mathlib.Analysis.CStarAlgebra.Classes
 import Mathlib.Analysis.CStarAlgebra.Basic
+import Mathlib.Analysis.CStarAlgebra.PositiveLinearMap
 import Mathlib.Analysis.CStarAlgebra.ApproximateUnit
 import Mathlib.Algebra.Order.Module.PositiveLinearMap
+-- Mathlib.Algebra.Star.StarRingHom
 import Mathlib.Topology.Defs.Filter
 import Mathlib.Data.Set.Operations
 import Mathlib.Algebra.Star.Subalgebra
@@ -14,20 +17,31 @@ import Mathlib.Analysis.InnerProductSpace.Defs
 import Mathlib.Data.Complex.Basic
 import Mathlib.Analysis.Complex.Order
 
-variable {A : Type*} [CStarAlgebra A] [PartialOrder A] [PartialOrder ℂ] [StarOrderedRing A]
+example {a b : ℚ} (h1 : a ≤ 1) (h2 : b ≤ 3) : (a + b) / 2 ≤ 2 := by
+  linear_combination (h1 + h2) / 2
+
+open ComplexConjugate
+open scoped ComplexOrder
+scoped[ComplexOrder] attribute [instance] Complex.partialOrder -- this is very important
+open Complex
+open Mathlib.Tactic.LinearCombination
+
+variable {A : Type*} [CStarAlgebra A] [PartialOrder A] [StarOrderedRing A]
 variable (f : A →ₚ[ℂ] ℂ)
+-- LinearMap (starRingEnd R) M M₂
 variable (p : A) (q : A) -- for experimentation. remove later
 set_option linter.unusedSectionVars false -- remove this at the end
 
-open ComplexConjugate
-open ComplexOrder
-
+/-def myf (f : A →ₚ[ℂ] ℂ) : A →ₗ⋆[ℂ] A →ₗ[ℂ] ℂ :=
+  (LinearMap.mul ℂ A).comp (starLinearEquiv ℂ (A := A) : A →ₗ⋆[ℂ] A) |>.compr₂ₛₗ f
+-/
 lemma aupetit_6_2_15lemma (x y : A) (l : ℂ) :
   0 ≤ f (x * star x) + l * f (y * star x) + (conj l) * f (x * star y)
     + l * (conj l) * f (y * star y) := by
   have hnonneg :=  PositiveLinearMap.map_nonneg f (mul_star_self_nonneg (x + (l • y)))
   rw [add_mul, star_add, mul_add, mul_add] at hnonneg
-  simp at hnonneg
+  simp only [star_smul, RCLike.star_def, Algebra.mul_smul_comm, Algebra.smul_mul_assoc, map_add,
+    map_smul, smul_eq_mul] at hnonneg
   have h : f (x * star x) + (starRingEnd ℂ) l * f (x * star y)
       + (l * f (y * star x) + (starRingEnd ℂ) l * (l * f (y * star y)))
     = f (x * star x) + l * f (y * star x) + (starRingEnd ℂ) l * f (x * star y)
@@ -35,10 +49,11 @@ lemma aupetit_6_2_15lemma (x y : A) (l : ℂ) :
   rw [← h]
   assumption
 
-theorem aupetit_6_2_15i (x : A) : f (star x) = conj (f x) := by
-  #check aupetit_6_2_15lemma f x 1 1
-  -- show that f is StarRingEquiv
-  sorry
+-- instance {F : Type*} [FunLike F A₁ A₂] [LinearMapClass F ℂ A₁ A₂] [OrderHomClass F A₁ A₂] :
+--    StarHomClass F A₁ A₂
+-- should give:
+open PositiveLinearMap
+theorem aupetit_6_2_15i (x : A) : f (star x) = conj (f x) := by simp [map_star]
 
 lemma fOfxStarxIsReal (x : A) : (f (x * star x)).re = f (x * star x) := by
   have xstarmul : star (x * star x) = x * star x := by exact star_mul_star x x
@@ -50,6 +65,9 @@ lemma fOfxStarxIsReal (x : A) : (f (x * star x)).re = f (x * star x) := by
   have fxisreal := Complex.conj_eq_iff_re.mp fstareqfnostar
   exact fxisreal
 
+lemma fxx_eq_conj (x : A) : conj (f (x * star x)) = f (x * star x) :=
+  conj_eq_iff_re.mpr (fOfxStarxIsReal f x)
+
 lemma fOfxStarxHas0Im (x : A) : (f (x * star x)).im = 0 := by
   have xstarmul : star (x * star x) = x * star x := by exact star_mul_star x x
   have fstareqfnostar : f (star (x * star x)) = f (x * star x)
@@ -60,28 +78,65 @@ lemma fOfxStarxHas0Im (x : A) : (f (x * star x)).im = 0 := by
   have fxisreal := Complex.conj_eq_iff_im.mp fstareqfnostar
   exact fxisreal
 
-theorem aupetit_6_2_15ii (x y : A) : norm (f (x * star y)) ≤ f (x * star x) * f (y * star y) := by
-  have := aupetit_6_2_15lemma f x y (f (x * star y)/((1+2^(1/2))*f (y * star y)))
+example (c : ℂ) : norm c ^ 2 = c * conj c := by exact Eq.symm (mul_conj' c)
+
+lemma aupetit_6_2_15iilemma (t : ℝ) (x y : A) (h : f (x * star y) ≠ 0) :
+  0 ≤ f (x * star x) + 2 * t * norm (f ( x * star y)) + t^2 * f (y * star y) := by
+  have := aupetit_6_2_15lemma f x y ((t * f (x * star y))/(norm (f (x * star y))))
+  have fact := mul_conj' (f (x * star y))
+  have fact2 : f (y * star x) = f (star (x * star y)) := by simp
+  have fact3 : f (star (x * star y)) = conj (f (x * star y)) := aupetit_6_2_15i (f) (x * star y)
+  have fact4 : f (y * star x) = conj (f (x * star y)) := Eq.trans fact2 fact3
+  simp [fact4] at this
+  have fact5 : ↑t * f (x * star y) / ↑‖f (x * star y)‖ * (starRingEnd ℂ) (f (x * star y)) =
+    ↑t * (f (x * star y) * (starRingEnd ℂ) (f (x * star y))) / ↑‖f (x * star y)‖ := by field_simp
+  simp [fact] at fact5
+  have fact6 : (t : ℂ) * ↑‖f (x * star y)‖ ^ 2 / ↑‖f (x * star y)‖ = ↑t * ↑‖f (x * star y)‖ := by
+    field_simp
+  have fact7 :=  Eq.trans fact5 fact6
+  simp [fact7] at this
+  have fact8 : ↑t * (starRingEnd ℂ) (f (x * star y)) / ↑‖f (x * star y)‖ * f (x * star y) =
+    ↑t * (f (x * star y) * (starRingEnd ℂ) (f (x * star y))) / ↑‖f (x * star y)‖ := by ring
+  simp [fact] at fact8
+  have fact9 : (t : ℂ) * ↑‖f (x * star y)‖ ^ 2 / ↑‖f (x * star y)‖ = ↑t * ↑‖f (x * star y)‖ := by
+    field_simp
+  have fact10 := Eq.trans fact8 fact9
+  simp [fact10] at this
+  have fact11 :
+    ↑t * f (x * star y) / ↑‖f (x * star y)‖ *
+      (↑t * (starRingEnd ℂ) (f (x * star y)) / ↑‖f (x * star y)‖) *
+      f (y * star y) =
+      (↑t^2 * (f (x * star y) * (starRingEnd ℂ) (f (x * star y))))/ ↑‖f (x * star y)‖ ^ 2 *
+      f (y * star y) := by field_simp
+  rw [fact11] at this
+  simp [fact] at this
+  field_simp at this
+  nth_rw 2 [add_assoc] at this
+  rw [← two_mul, ← mul_assoc] at this
+  exact this
+
+theorem aupetit_6_2_15ii (x y : A) :
+  norm (f (x * star y)) ^ 2 ≤ f (x * star x) * f (y * star y) := by
+  -- have h := aupetit_6_2_15lemma f x y (f (x * star y)/((1+2^(1/2))*f (y * star y)))
   have fxisreal := fOfxStarxIsReal f x
   have fyisreal := fOfxStarxIsReal f y
-
+  have fxx := fxx_eq_conj f x
+  have fyy := fxx_eq_conj f y
+  have fxnonneg := PositiveLinearMap.map_nonneg f (mul_star_self_nonneg x)
+  have fynonneg := PositiveLinearMap.map_nonneg f (mul_star_self_nonneg y)
   by_cases fzero : f (x * star y) = 0
-  . have fxnonneg := PositiveLinearMap.map_nonneg f (mul_star_self_nonneg x)
-    have fynonneg := PositiveLinearMap.map_nonneg f (mul_star_self_nonneg y)
-    rw [fzero]
-    -- have refxnonneg := fxnonneg
-    -- rw [← fxisreal] at refxnonneg
-    -- have zisz : (0 : ℂ) = (0 : ℝ) := by exact rfl
-    -- rw [zisz, ← fxisreal] at fxnonneg
-    -- rw [← fxisreal, ← fyisreal]
-    simp
-    have fxim0 : (f (x * star x)).im = (0 : ℝ) := by exact fOfxStarxHas0Im f x
-    have fyim0 : (f (y * star y)).im = (0 : ℝ) := by exact fOfxStarxHas0Im f y
-    have fximeqfyim := fxim0
-    rw [← fyim0] at fximeqfyim
-    #check Complex.le_def.mp fxnonneg
-    have : (0 : ℂ).re ≤ (f (x * star x)).re := by sorry
-    sorry
+  . have two_ne_zero : 2 ≠ 0 := by exact Ne.symm (Nat.zero_ne_add_one 1)
+    rw [fzero, norm_zero]
+    norm_num
+    exact Left.mul_nonneg fxnonneg fynonneg
+  have : (0 : ℂ).re ≤ (f (x * star x)).re := by exact re_le_re fxnonneg
+  have : (0 : ℂ).re ≤ (f (y * star y)).re := by exact re_le_re fynonneg
+  push_neg at fzero
+  have non_zero_norm : norm (f (x * star y)) ≠ 0 := by exact norm_ne_zero_iff.mpr fzero
+  have cursed := aupetit_6_2_15lemma f x y
+    ((norm (f (x * star y))/((1+2^(1/2))*f (y * star y))) * (f (x * star y)/norm (f (x * star y))))
+  simp [non_zero_norm, fyy] at cursed -- fxx not needed
+  -- TO-DO: finish this
   sorry
 
 
@@ -149,4 +204,20 @@ To-do: define A/N f, and the inner product on it
 - make the partial order on the CStarAlgebra explicit so that I can use
   non-negativity of certain elements, like a* a (I think StarOrderedRing does this)
 - enable the better star notation
+-/
+
+/-
+Graveyard:
+
+    -- have refxnonneg := fxnonneg
+    -- rw [← fxisreal] at refxnonneg
+    -- have zisz : (0 : ℂ) = (0 : ℝ) := by exact rfl
+    -- rw [zisz, ← fxisreal] at fxnonneg
+    -- rw [← fxisreal, ← fyisreal]
+
+    -- have fxim0 : (f (x * star x)).im = (0 : ℝ) := by exact fOfxStarxHas0Im f x
+    -- have fyim0 : (f (y * star y)).im = (0 : ℝ) := by exact fOfxStarxHas0Im f y
+    -- have fximeqfyim := fxim0
+    -- rw [← fyim0] at fximeqfyim
+    -- #check Complex.le_def.mp fxnonneg
 -/

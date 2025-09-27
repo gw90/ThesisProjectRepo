@@ -44,6 +44,16 @@ instance instStarAddMonoidFunctional [StarAddMonoid (A →ₗ⋆[ℂ] A)] :
   ‹StarAddMonoid (A →ₗ⋆[ℂ] A)›
 -/
 
+noncomputable def mySesquilinear (f : A →ₚ[ℂ] ℂ) : A →ₗ⋆[ℂ] A →ₗ[ℂ] ℂ :=
+  (LinearMap.mul ℂ A).comp (starLinearEquiv ℂ (A := A) : A →ₗ⋆[ℂ] A) |>.compr₂ₛₗ f
+
+noncomputable instance myInnerProductSpace : PreInnerProductSpace.Core ℂ (WithFunctional A f) where
+  inner a b := mySesquilinear f a b
+  re_inner_nonneg := sorry
+  conj_inner_symm := sorry
+  add_left _ _ _ := LinearMap.map_add₂ _ _ _ _
+  smul_left _ _ _ := LinearMap.map_smulₛₗ₂ _ _ _ _
+
 def myInner (a b : WithFunctional A f) : ℂ := f (star b * a)
 #check myInner f
 
