@@ -16,7 +16,6 @@ import Mathlib.Analysis.CStarAlgebra.Module.Defs
 import Mathlib.Analysis.InnerProductSpace.Defs
 import Mathlib.Data.Complex.Basic
 import Mathlib.Analysis.Complex.Order
-import Mathlib.Tactic.WLOG
 
 example {a b : ℚ} (h1 : a ≤ 1) (h2 : b ≤ 3) : (a + b) / 2 ≤ 2 := by
   linear_combination (h1 + h2) / 2
@@ -131,6 +130,7 @@ theorem aupetit_6_2_15ii (x y : A) :
   have fynonneg := PositiveLinearMap.map_nonneg f (mul_star_self_nonneg y)
   have fyyIm0: (f (y * star y)).im  = 0 := by exact fOfxStarxHas0Im f y
   have fxxIm0: (f (x * star x)).im  = 0 := by exact fOfxStarxHas0Im f x
+  have fxxEqConj: f (x * star x)  = conj (f (x * star x)) := by exact id (Eq.symm fxx)
 
   have normIm0 : (norm (f (x * star y)) :ℂ ).im = 0 := by exact rfl
   have fullProdIm0 := Complex.smul_im (-‖f (x * star y)‖) (f (y * star y))⁻¹
@@ -154,34 +154,36 @@ theorem aupetit_6_2_15ii (x y : A) :
     exact Left.mul_nonneg fxnonneg fynonneg
   have fzero2 := fzero
   by_cases fyyzero : f (y * star y) = 0
-  . have eqOwnConj2 : -↑‖f (x * star y)‖ = (starRingEnd ℂ) (-↑‖f (x * star y)‖) := by simp [(Complex.conj_ofReal (- norm (f (x * star y)))).symm]
-    have inter2 := (aupetit_6_2_15iilemma (f) (- norm (f (x * star y))) (eqOwnConj2)) y x
-    have := by calc
-      conj (f (x * star y)) = f (star (x * star y)) := Eq.symm (aupetit_6_2_15i f (x * star y))
-      _ = f (y * star x) := by simp
-    have fxsynonzero : f (y * star x) ≠ 0 := by
-      rw [← this]
-      by_contra c
-      . simp at c
-        exact fzero c
-    have h2 := inter2 fxsynonzero
-    rw [fyyzero, zero_add] at h2
-    have := by calc
-      norm (f (y * star x)) = norm (conj (f (y * star x))) := by simp
-      _ = norm (f (star (y * star x))) := by congr; exact Eq.symm (aupetit_6_2_15i f (y * star x))
-      _ = norm (f (x * star y)) := by simp
-    rw [this, pow_two] at h2
-    have := by calc
-      2 * -↑‖f (x * star y)‖ * ↑‖f (x * star y)‖ + -↑‖f (x * star y)‖ * -↑‖f (x * star y)‖ * f (x * star x)
-      = 2 * -↑‖f (x * star y)‖ ^ 2 + (-↑‖f (x * star y)‖) ^ 2 * f (x * star x) := by ring
-      _ = 2 * -↑‖f (x * star y)‖ ^ 2 + ↑‖f (x * star y)‖ ^ 2 * f (x * star x) := by simp
-      _ = -2 * ↑‖f (x * star y)‖ ^ 2 + ↑‖f (x * star y)‖ ^ 2 * f (x * star x) := by simp
-      _ = ↑‖f (x * star y)‖ ^ 2 *(-2 + f (x * star x)) := by ring
-      _ = -↑‖f (x * star y)‖ ^ 2 *(2 - f (x * star x)) := by ring
-    rw [this] at h2
-    -- break into cases where 2-f(xx*)≤0 and where >0
+  · push_neg at fzero2
+    have twoEqConj : 2 = conj (2 : ℂ) := by exact Eq.symm ((fun {z} ↦ conj_eq_iff_re.mpr) rfl)
+    by_cases fxzero : f (x * star x) = 0
+    · have halfEqOwnConj : (-1/2 : ℂ) = conj (-1/2 : ℂ) := by simp; congr;
+      have l1 := aupetit_6_2_15iilemma (f) (-1/2) halfEqOwnConj x y fzero2
+      rw [fxzero, fyyzero] at l1
+      have step : (0 : ℂ) ≤ - norm (f (x * star y)) := by
+        calc
+          (0 : ℂ) ≤ 0 + 2 * (- 1 / 2) * ↑‖f (x * star y)‖ + (- 1 / 2) ^ 2 * 0 := l1
+          _ = - ↑‖f (x * star y)‖ := by simp; norm_num
+      rw [fxzero, fyyzero, zero_mul]
+      have normLeq0 : (norm (f (x * star y)) : ℂ) ≤ 0 := by exact neg_nonneg.mp step
+      have := norm_nonneg (f (x * star y))
+      have normGeq0 : 0 ≤ (norm (f (x * star y)) : ℂ) := by exact zero_le_real.mpr this
+      have norm0 : 0 = (norm (f (x * star y)) : ℂ) := le_antisymm normGeq0 normLeq0
+      rw [← norm0]
+      simp
+    let c := (2 * f (x * star x))/(-2 * norm (f (x * star y)))
 
-    sorry
+    have constEqOwnConj : c = conj c := by
+      dsimp [c]
+      simp only [neg_mul, map_div₀, map_mul, map_neg, conj_ofReal]
+      rw [← fxxEqConj, ← twoEqConj]
+    have := aupetit_6_2_15iilemma (f) c constEqOwnConj x y fzero2
+    rw [fyyzero, mul_zero, add_zero] at this
+    dsimp [c] at this
+    field_simp at this
+    norm_num at this
+    have fxneg : f (x * star x) < 0 := by exact lt_of_le_of_ne this fxzero
+    linarith
   push_neg at fzero
 
   have h := inter fzero
@@ -358,4 +360,73 @@ Graveyard:
 
   --   sorry
   -- push_neg at fyyzero
+
+  have eqOwnConj2 : -↑‖f (x * star y)‖ = (starRingEnd ℂ) (-↑‖f (x * star y)‖) := by simp [(Complex.conj_ofReal (- norm (f (x * star y)))).symm]
+    have inter2 := (aupetit_6_2_15iilemma (f) (- norm (f (x * star y))) (eqOwnConj2)) y x
+    have := by calc
+      conj (f (x * star y)) = f (star (x * star y)) := Eq.symm (aupetit_6_2_15i f (x * star y))
+      _ = f (y * star x) := by simp
+    have fxsynonzero : f (y * star x) ≠ 0 := by
+      rw [← this]
+      by_contra c
+      . simp at c
+        exact fzero c
+    have h2 := inter2 fxsynonzero
+    rw [fyyzero, zero_add] at h2
+    have := by calc
+      norm (f (y * star x)) = norm (conj (f (y * star x))) := by simp
+      _ = norm (f (star (y * star x))) := by congr; exact Eq.symm (aupetit_6_2_15i f (y * star x))
+      _ = norm (f (x * star y)) := by simp
+    rw [this, pow_two] at h2
+    have := by calc
+      2 * -↑‖f (x * star y)‖ * ↑‖f (x * star y)‖ + -↑‖f (x * star y)‖ * -↑‖f (x * star y)‖ * f (x * star x)
+      = 2 * -↑‖f (x * star y)‖ ^ 2 + (-↑‖f (x * star y)‖) ^ 2 * f (x * star x) := by ring
+      _ = 2 * -↑‖f (x * star y)‖ ^ 2 + ↑‖f (x * star y)‖ ^ 2 * f (x * star x) := by simp
+      _ = -2 * ↑‖f (x * star y)‖ ^ 2 + ↑‖f (x * star y)‖ ^ 2 * f (x * star x) := by simp
+      _ = ↑‖f (x * star y)‖ ^ 2 *(-2 + f (x * star x)) := by ring
+      _ = -↑‖f (x * star y)‖ ^ 2 *(2 - f (x * star x)) := by ring
+    rw [this] at h2
+    -- break into cases where 2-f(xx*)≤0 and where >0
+
+    lemma aupetit_6_2_15iilemma' (t : ℂ) (ht : t = conj t) (x y : A) (h : f (x * star y) ≠ 0) :
+  -- initally did the proof with (t : ℝ), but then when I changed it, it immediately hilighted
+  -- the step that failed, so I could go, rigirously repair the proof step by step
+  -- TO-DO: re-write with a calculation proof
+  - (2 * t * norm (f (x * star y)) + t^2 * f (y * star y)) ≤ f (x * star x) := by
+    have l1 := aupetit_6_2_15iilemma (f) t (ht) x y h
+
+    have interStep := (tsub_le_iff_right (a := 0) (b := (2 * t * norm (f (x * star y)) + t^2 * f (y * star y))) (c := f (x * star x))).mpr
+    norm_cast at interStep
+    norm_cast at l1
+    rw [add_assoc] at l1
+    have interStep2 := interStep l1
+    rw [zero_sub] at interStep2
+    have interStep3 := neg_le.mp interStep2
+
+have negOneEqOwnConj : (-1 : ℂ) = conj (-1 : ℂ) := by rw [map_neg, map_one]
+    push_neg at fzero2
+    have := by calc
+      conj (f (x * star y)) = f (star (x * star y)) :=
+        Eq.symm (aupetit_6_2_15i f (x * star y))
+      _ = f (y * star x) := by simp
+    have : conj (f (y * star x)) = conj (conj (f (x * star y))) := by
+      congr
+      exact this.symm
+    simp at this
+    rw [← this] at fzero2
+    rw [ne_eq, map_eq_zero] at fzero2
+    push_neg at fzero2
+    have eq1 := aupetit_6_2_15iilemma (f) (-1) negOneEqOwnConj y x fzero2
+    rw [fyyzero] at eq1
+    simp only [mul_neg, mul_one, neg_mul, zero_add, even_two, Even.neg_pow, one_pow, one_mul,
+      add_zero] at eq1
+    have oneEqOwnConj : (1 : ℂ) = conj (1 : ℂ) := by rw [map_one]
+    have eq2 := aupetit_6_2_15iilemma (f) (1) oneEqOwnConj y x fzero2
+    rw [fyyzero] at eq2
+    simp at eq2
+    have : 0 ≤ -(2 * ↑‖f (y * star x)‖) + f (x * star x) - (2 * ↑‖f (y * star x)‖ + f (x * star x)) := by
+      linear_combination (eq1 - eq2)
+      -- le_neg_add_iff_add_le
+
+    sorry
 -/
