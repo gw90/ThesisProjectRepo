@@ -16,6 +16,7 @@ import Mathlib.Analysis.CStarAlgebra.Module.Defs
 import Mathlib.Analysis.InnerProductSpace.Defs
 import Mathlib.Data.Complex.Basic
 import Mathlib.Analysis.Complex.Order
+import Mathlib.Tactic.WLOG
 
 example {a b : ℚ} (h1 : a ≤ 1) (h2 : b ≤ 3) : (a + b) / 2 ≤ 2 := by
   linear_combination (h1 + h2) / 2
@@ -122,7 +123,6 @@ lemma aupetit_6_2_15iilemma (t : ℂ) (ht : t = conj t) (x y : A) (h : f (x * st
 
 theorem aupetit_6_2_15ii (x y : A) :
   norm (f (x * star y)) ^ 2 ≤ f (x * star x) * f (y * star y) := by
-  -- have h := aupetit_6_2_15lemma f x y (f (x * star y)/((1+2^(1/2))*f (y * star y)))
   have fxisreal := fOfxStarxIsReal f x
   have fyisreal := fOfxStarxIsReal f y
   have fxx := fxx_eq_conj f x
@@ -152,11 +152,44 @@ theorem aupetit_6_2_15ii (x y : A) :
   · simp only [fzero, norm_zero, ofReal_zero, ne_eq, OfNat.ofNat_ne_zero, not_false_eq_true,
     zero_pow, ge_iff_le]
     exact Left.mul_nonneg fxnonneg fynonneg
+  have fzero2 := fzero
+  by_cases fyyzero : f (y * star y) = 0
+  . have eqOwnConj2 : -↑‖f (x * star y)‖ = (starRingEnd ℂ) (-↑‖f (x * star y)‖) := by simp [(Complex.conj_ofReal (- norm (f (x * star y)))).symm]
+    have inter2 := (aupetit_6_2_15iilemma (f) (- norm (f (x * star y))) (eqOwnConj2)) y x
+    have := by calc
+      conj (f (x * star y)) = f (star (x * star y)) := Eq.symm (aupetit_6_2_15i f (x * star y))
+      _ = f (y * star x) := by simp
+    have fxsynonzero : f (y * star x) ≠ 0 := by
+      rw [← this]
+      by_contra c
+      . simp at c
+        exact fzero c
+    have h2 := inter2 fxsynonzero
+    rw [fyyzero, zero_add] at h2
+    have := by calc
+      norm (f (y * star x)) = norm (conj (f (y * star x))) := by simp
+      _ = norm (f (star (y * star x))) := by congr; exact Eq.symm (aupetit_6_2_15i f (y * star x))
+      _ = norm (f (x * star y)) := by simp
+    rw [this, pow_two] at h2
+    have := by calc
+      2 * -↑‖f (x * star y)‖ * ↑‖f (x * star y)‖ + -↑‖f (x * star y)‖ * -↑‖f (x * star y)‖ * f (x * star x)
+      = 2 * -↑‖f (x * star y)‖ ^ 2 + (-↑‖f (x * star y)‖) ^ 2 * f (x * star x) := by ring
+      _ = 2 * -↑‖f (x * star y)‖ ^ 2 + ↑‖f (x * star y)‖ ^ 2 * f (x * star x) := by simp
+      _ = -2 * ↑‖f (x * star y)‖ ^ 2 + ↑‖f (x * star y)‖ ^ 2 * f (x * star x) := by simp
+      _ = ↑‖f (x * star y)‖ ^ 2 *(-2 + f (x * star x)) := by ring
+      _ = -↑‖f (x * star y)‖ ^ 2 *(2 - f (x * star x)) := by ring
+    rw [this] at h2
+    -- break into cases where 2-f(xx*)≤0 and where >0
+
+    sorry
   push_neg at fzero
+
   have h := inter fzero
   simp at h
   rw [add_assoc, add_comm] at h
   have step1 := tsub_le_iff_right.mpr h
+
+
   rw [zero_sub] at step1
 
   have step2 := by calc
@@ -164,19 +197,9 @@ theorem aupetit_6_2_15ii (x y : A) :
     -(2 * (‖f (x * star y)‖ / (f (y * star y))) * ↑‖f (x * star y)‖) +
     (‖f (x * star y)‖ / (f (y * star y))) ^ 2 * f (y * star y) := step1
     _ = -(2 * (‖f (x * star y)‖^2 / (f (y * star y)))) +
-    (‖f (x * star y)‖ / (f (y * star y))) ^ 2 * f (y * star y) := by ring
-    _ = -(2 * (‖f (x * star y)‖^2 / (f (y * star y)))) +
-    ((‖f (x * star y)‖^2) / ((f (y * star y))) ^ 2) * f (y * star y) := by ring
-    _ = -(2 * (‖f (x * star y)‖^2 / (f (y * star y)))) +
     ((‖f (x * star y)‖^2) / ((f (y * star y)))) * (1/(f (y * star y))) * f (y * star y) := by ring
     _ = -(2 * (‖f (x * star y)‖^2 / (f (y * star y)))) +
     ((‖f (x * star y)‖^2) / ((f (y * star y)))) := by field_simp
-    _ = -(2 * (‖f (x * star y)‖^2) * (1/ (f (y * star y)))) +
-    ((‖f (x * star y)‖^2)) * (1 / ((f (y * star y)))) := by ring
-    _ = (-(2 * (‖f (x * star y)‖^2)) +
-    ((‖f (x * star y)‖^2)) )* (1 / ((f (y * star y)))) := by ring
-    _ = (-(2 * (‖f (x * star y)‖^2)) +
-    ((‖f (x * star y)‖^2))) * (1 / ((f (y * star y)))) := by ring
     _ = (-(2 * (‖f (x * star y)‖^2)) +
     ((‖f (x * star y)‖^2))) * ((f (y * star y)))⁻¹ := by ring
 
@@ -184,16 +207,13 @@ theorem aupetit_6_2_15ii (x y : A) :
   (-(2 * (‖f (x * star y)‖^2)) +
     ((‖f (x * star y)‖^2))) * ((f (y * star y)))⁻¹ * (f (y * star y)) :=
       mul_le_mul_of_nonneg_right step2 fynonneg
-  by_cases fyyzero : f (y * star y) = 0
-  · sorry
-  push_neg at fyyzero
+
   rw [mul_assoc] at step3
   nth_rw 4 [mul_comm] at step3
   rw [Complex.mul_inv_cancel fyyzero, mul_one] at step3
   have step4 := by calc
     -f (x * star x) * f (y * star y) ≤
       -(2 * ↑‖f (x * star y)‖ ^ 2) + ↑‖f (x * star y)‖ ^ 2 := step3
-    _ = -2 * ↑‖f (x * star y)‖ ^ 2 + ↑‖f (x * star y)‖ ^ 2 := by ring
     _ = (-2 + 1) * ↑‖f (x * star y)‖ ^ 2 := by ring
     _ = -1 * ↑‖f (x * star y)‖ ^ 2 := by norm_num
 
@@ -215,11 +235,16 @@ lemma add_mem_helper (f : A →ₚ[ℂ] ℂ) (a b : A) : a ∈ {a | f (star a * 
   → b ∈ {a | f (star a * a) = 0} → a + b ∈ {a | f (star a * a) = 0} := by
   simp
   intro h1 h2
+  have : f (star (a + b) * (a + b)) = f ((star a + star b) * (a + b)) := by simp
+  have : 0 ≤ star (a + b) * (a + b) := by exact star_mul_self_nonneg (a+b)
+  have : 0 ≤ f (star (a + b) * (a + b)) := by exact PositiveLinearMap.map_nonneg f this
+
   rw [mul_add, add_mul, add_mul, ← add_assoc]
   have : f (star a * a + star b * a + star a * b + star b * b)
     = f (star a * a) + f (star b * a) + f (star a * b) + f (star b * b) := by simp
   rw [this]
   rw [h1, h2]
+
   ring_nf
   sorry
 
@@ -235,6 +260,8 @@ lemma smul_mem_helper (f : A →ₚ[ℂ] ℂ) (b : A) {a : A} : a ∈ {a | f (st
   #check mySesquilinear_apply f a a
   rw [← mySesquilinear_apply f a a] at h
   rw [← mySesquilinear_apply f (b • a) (b • a)]
+
+
   sorry
 
 -- From Aupetit leamm 6.2.18
@@ -281,4 +308,54 @@ Graveyard:
     -- have fximeqfyim := fxim0
     -- rw [← fyim0] at fximeqfyim
     -- #check Complex.le_def.mp fxnonneg
+ wlog fyyzero : f (y * star y) ≠ 0 generalizing x y with H
+  . push_neg at fyyzero
+    have rev := H y x
+
+    have := by calc
+     ‖f (x * star y)‖ = ‖conj (f (x * star y))‖ := Eq.symm (norm_conj (f (x * star y)))
+     _ = ‖f (star (x * star y))‖ := by rw [aupetit_6_2_15i (f) (x * star y)]
+     _ = ‖f (y * star x)‖ := by simp
+    rw [this, mul_comm]
+    #check (LinearMap.inl_map_mul x y)
+    #check LinearMap.inl_map_mul
+    #check (f.toLinearMap)
+    #check
+    apply rev
+    sorry
+
+
+  -- by_cases fyyzero : f (y * star y) = 0
+  -- · rw [fyyzero, mul_zero]
+  --   have fofyyzero := fyyzero
+  --   have inter := (LinearMap.map_smul (f.toLinearMap) 0 y)
+
+  --   have zisz : 0 = HSMul.hSMul 0 (f.toLinearMap y) := by ring
+  --   norm_cast at zisz
+  --   rw [zisz] at fyyzero
+  --   norm_cast at inter
+  --   rw [← inter] at fyyzero
+  --   have eqLine : f (y * star y) = f.toLinearMap (y * star y) := by exact rfl
+  --   rw [eqLine] at fyyzero
+
+  --   have : f = f.toLinearMap := by exact rfl
+  --   rw [← this] at fyyzero
+  --   norm_cast
+  --   apply (sq_nonpos_iff (‖f (x * star y)‖)).mpr
+  --   rw [norm_eq_zero]
+  --   have zerobothtimes: 0 • y = y * (0 : A) := by simp
+  --   have eq0self : f (y * star y) = f (0 • y) := by exact fyyzero
+  --   rw [zerobothtimes] at eq0self
+
+  --   by_cases finj : Function.Injective f
+  --   . have yyzero : y * star y = 0 • y := finj fyyzero
+  --     simp at yyzero
+  --     rw [yyzero]
+  --     simp
+  --   --rw [← (LinearMap.map_zero f.toLinearMap)] at fyyzero
+
+  --   #check congrFun
+
+  --   sorry
+  -- push_neg at fyyzero
 -/
