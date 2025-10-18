@@ -2,6 +2,7 @@ import Mathlib.Analysis.CStarAlgebra.Classes
 import Mathlib.Analysis.CStarAlgebra.Basic
 import Mathlib.Analysis.CStarAlgebra.PositiveLinearMap
 import Mathlib.Analysis.CStarAlgebra.ApproximateUnit
+import Mathlib.Analysis.CStarAlgebra.Spectrum
 import Mathlib.Algebra.Order.Module.PositiveLinearMap
 -- Mathlib.Algebra.Star.StarRingHom
 import Mathlib.Topology.Defs.Filter
@@ -15,6 +16,7 @@ import Mathlib.Analysis.CStarAlgebra.Module.Defs
 import Mathlib.Analysis.InnerProductSpace.Defs
 import Mathlib.Data.Complex.Basic
 import Mathlib.Analysis.Complex.Order
+import Mathlib.Analysis.Normed.Algebra.Spectrum
 
 open ComplexConjugate
 open scoped ComplexOrder
@@ -66,10 +68,10 @@ lemma fOfxStarxHas0Im (x : A) : (f (x * star x)).im = 0 := by
 
 example (c : ℂ) : norm c ^ 2 = c * conj c := by exact Eq.symm (mul_conj' c)
 
+
+-- initally did the proof with (t : ℝ), but then when I changed it, it immediately hilighted
+-- the step that failed, so I could go, rigirously repair the proof step by step
 lemma aupetit_6_2_15iilemma (t : ℂ) (ht : t = conj t) (x y : A) (h : f (x * star y) ≠ 0) :
-  -- initally did the proof with (t : ℝ), but then when I changed it, it immediately hilighted
-  -- the step that failed, so I could go, rigirously repair the proof step by step
-  -- TO-DO: re-write with a calculation proof
   0 ≤ f (x * star x) + 2 * t * norm (f (x * star y)) + t^2 * f (y * star y) := by
   have := aupetit_6_2_15lemma f x y ((t * f (x * star y))/(norm (f (x * star y))))
   have fact := mul_conj' (f (x * star y))
@@ -119,7 +121,7 @@ theorem aupetit_6_2_15ii (x y : A) :
   have fynonneg := PositiveLinearMap.map_nonneg f (mul_star_self_nonneg y)
   have fyyIm0: (f (y * star y)).im  = 0 := fOfxStarxHas0Im f y
   have fxxIm0: (f (x * star x)).im  = 0 := fOfxStarxHas0Im f x
-  have fxxEqConj: f (x * star x)  = conj (f (x * star x)) := id (Eq.symm fxx)
+  have fxxEqConj: f (x * star x)  = conj (f (x * star x)) := Eq.symm fxx
 
   have normIm0 : (norm (f (x * star y)) :ℂ ).im = 0 := rfl
   have fullProdIm0 := Complex.smul_im (-‖f (x * star y)‖) (f (y * star y))⁻¹
@@ -215,6 +217,97 @@ theorem aupetit_6_2_15ii (x y : A) :
   simp at step5
   exact step5
 
+theorem aupetit_6_2_15iiia (x : A) : norm (f x) ^ 2 ≤ f (1 : A) * f (x * star x) := by
+  have := aupetit_6_2_15ii f x (1 : A)
+  rwa [star_one, mul_one, mul_one, mul_comm] at this
+
+-- From Aupetit leamm 6.2.18
+-- should probably use module ideal? see 10.1.1 MIL
+def N (f : A →ₚ[ℂ] ℂ) : Ideal A where
+  carrier := {a : A | f (star a * a) = 0}
+  add_mem' := by
+    intro a b ha hb
+    rw [Set.mem_setOf_eq] at ha
+    rw [Set.mem_setOf_eq] at hb
+    rw [Set.mem_setOf_eq]
+    rw [star_add, left_distrib, right_distrib, right_distrib, ← add_assoc]
+    rw [map_add, map_add, map_add]
+    rw [ha, hb, add_zero, zero_add]
+
+    have hab := aupetit_6_2_15ii f (star a) (star b)
+    rw [star_star, star_star] at hab
+    rw [ha, hb, zero_mul] at hab
+    norm_cast at hab
+    rw [sq_nonpos_iff, norm_eq_zero] at hab
+
+
+    have hba := aupetit_6_2_15ii f (star b) (star a)
+    rw [star_star, star_star] at hba
+    rw [ha, hb, zero_mul] at hba
+    norm_cast at hba
+    rw [sq_nonpos_iff, norm_eq_zero] at hba
+
+    rw [hba, hab]
+    norm_num -- could be simp too
+  zero_mem' := by simp;
+  smul_mem' := by
+    intro c x hx
+    rw [Set.mem_setOf_eq] at hx
+    rw [Set.mem_setOf_eq]
+    rw [smul_eq_mul, star_mul, ← mul_assoc]
+    have := aupetit_6_2_15ii f (star x * star c * c) (star x)
+    rw [star_star, star_mul, hx, mul_zero] at this
+    norm_cast at this
+    rw [sq_nonpos_iff, norm_eq_zero] at this
+    assumption -- exact this
+
+
+--theorem aupetit6_2_18_closed : IsClosed {a : A | f (star a * a) = 0} := by sorry
+variable (f : A →ₚ[ℂ] ℂ)
+#check N f
+#check Ideal.coe_closure (N f)
+#check (N f).closure
+#check ((N f) : Set A)
+
+theorem aupetit6_2_18_closed' : (N f) = (N f).closure := by sorry
+
+theorem aupetit6_2_18_closed : IsClosed ((N f) : Set A) := by sorry
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+/-
+
+variable (x : A)
+#check x * star x
+#check spectralRadius ℂ (x * star x)
+#check (spectralRadius ℂ (x * star x)).toReal
+#check IsSelfAdjoint.spectralRadius_eq_nnnorm
+#check IsSelfAdjoint.toReal_spectralRadius_complex_eq_norm
+
+-- Notation: ρ is spectral radius!!
+theorem aupetit_6_2_15iiib (x : A) :
+  f (1 : A) * f (x * star x) ≤ ((f (1 : A)) ^ 2) * (spectralRadius ℂ (x * star x)).toReal := by
+  sorry
+
+-- theorem aupetit_6_2_15iiic (x : A) : norm (f x) ≤ f (1 : A) * norm x  := by sorry
+
+
+-- theorem aupetit_6_2_15iiid : norm (f) = f (1 : A)  := by sorry
+
 -- Begin code from Eric Wieser
 -- noncomputability should be fixed in by Eric Wieser's bug fix
 noncomputable def mySesquilinear (f : A →ₚ[ℂ] ℂ) : A →ₗ⋆[ℂ] A →ₗ[ℂ] ℂ :=
@@ -257,26 +350,7 @@ lemma smul_mem_helper (f : A →ₚ[ℂ] ℂ) (b : A) {a : A} : a ∈ {a | f (st
 
 
   sorry
-
--- From Aupetit leamm 6.2.18
--- should probably use module ideal? see 10.1.1 MIL
-def N (f : A →ₚ[ℂ] ℂ) : Ideal A where
-  carrier := {a : A | f (star a * a) = 0}
-  add_mem' := by intro a b; exact add_mem_helper f a b
-  zero_mem' := by simp;
-  smul_mem' := by intro b; exact smul_mem_helper f b
-
---theorem aupetit6_2_18_closed : IsClosed {a : A | f (star a * a) = 0} := by sorry
-variable (f : A →ₚ[ℂ] ℂ)
-#check N f
-#check Ideal.coe_closure (N f)
-#check (N f).closure
-#check ((N f) : Set A)
-
-theorem aupetit6_2_18_closed' : (N f) = (N f).closure := by sorry
-
-theorem aupetit6_2_18_closed : IsClosed ((N f) : Set A) := by sorry
-
+-/
 /-
 To-do: define A/N f, and the inner product on it
 - define the semi-inner product/positive semidefinite sesquilinar form, from 138 8.0.10
