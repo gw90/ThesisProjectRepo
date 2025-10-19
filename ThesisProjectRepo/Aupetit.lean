@@ -1,22 +1,4 @@
-import Mathlib.Analysis.CStarAlgebra.Classes
-import Mathlib.Analysis.CStarAlgebra.Basic
 import Mathlib.Analysis.CStarAlgebra.PositiveLinearMap
-import Mathlib.Analysis.CStarAlgebra.ApproximateUnit
-import Mathlib.Analysis.CStarAlgebra.Spectrum
-import Mathlib.Algebra.Order.Module.PositiveLinearMap
--- Mathlib.Algebra.Star.StarRingHom
-import Mathlib.Topology.Defs.Filter
-import Mathlib.Data.Set.Operations
-import Mathlib.Algebra.Star.Subalgebra
-import Mathlib.Analysis.Normed.Module.Basic
-import Mathlib.LinearAlgebra.BilinearMap
-import Mathlib.Algebra.Module.LinearMap.Defs
-import Mathlib.Algebra.Module.LinearMap.Star -- conjugate linear maps
-import Mathlib.Analysis.CStarAlgebra.Module.Defs
-import Mathlib.Analysis.InnerProductSpace.Defs
-import Mathlib.Data.Complex.Basic
-import Mathlib.Analysis.Complex.Order
-import Mathlib.Analysis.Normed.Algebra.Spectrum
 
 open ComplexConjugate
 open scoped ComplexOrder
@@ -273,17 +255,14 @@ def N (f : A →ₚ[ℂ] ℂ) : Submodule ℂ A where
     intro a b ha hb
     rw [Set.mem_setOf_eq] at ha
     rw [Set.mem_setOf_eq] at hb
-    rw [Set.mem_setOf_eq]
-    rw [star_add, left_distrib, right_distrib, right_distrib, ← add_assoc]
-    rw [map_add, map_add, map_add]
-    rw [ha, hb, add_zero, zero_add]
+    rw [Set.mem_setOf_eq, star_add, left_distrib, right_distrib, right_distrib,
+      ← add_assoc, map_add, map_add, map_add, ha, hb, add_zero, zero_add]
 
     have hab := aupetit_6_2_15ii f (star a) (star b)
     rw [star_star, star_star] at hab
     rw [ha, hb, zero_mul] at hab
     norm_cast at hab
     rw [sq_nonpos_iff, norm_eq_zero] at hab
-
 
     have hba := aupetit_6_2_15ii f (star b) (star a)
     rw [star_star, star_star] at hba
@@ -303,11 +282,47 @@ def N (f : A →ₚ[ℂ] ℂ) : Submodule ℂ A where
     right
     exact hx
 
+-- Begin code from Eric Wieser
+-- noncomputability should be fixed in by Eric Wieser's bug fix
+noncomputable def mySesquilinear (f : A →ₚ[ℂ] ℂ) : A →ₗ⋆[ℂ] A →ₗ[ℂ] ℂ :=
+  (LinearMap.mul ℂ A).comp (starLinearEquiv ℂ (A := A) : A →ₗ⋆[ℂ] A) |>.compr₂ₛₗ f
 
-#check N f
+@[simp]
+theorem mySesquilinear_apply (f : A →ₚ[ℂ] ℂ) (x y : A) :
+  mySesquilinear f x y = f (star x * y) := rfl
+-- End code from Eric Wieser
 
+-- have to lift both the function and its inner function
+-- https://leanprover-community.github.io/mathlib4_docs/Mathlib/LinearAlgebra/Quotient/Basic.html
+-- use liftQ and mapQ
 
-
+noncomputable instance myInnerProductSpace : InnerProductSpace.Core ℂ (A ⧸ N f) where
+  inner a b := mySesquilinear f (Quotient.out a) (Quotient.out b)
+  re_inner_nonneg := by
+    intro a
+    rw [mySesquilinear_apply, RCLike.re_to_complex]
+    have := star_mul_self_nonneg (Quotient.out a)
+    have := PositiveLinearMap.map_nonneg f this
+    have := re_le_re this
+    exact this
+  definite := by
+    intro a h
+    rw [mySesquilinear_apply] at h
+    have := (Submodule.Quotient.mk_eq_zero (N f)).mpr h
+    rwa [Submodule.Quotient.mk_out] at this
+  conj_inner_symm := by
+    intro a b
+    rw [mySesquilinear_apply]
+    rw [← (aupetit_6_2_15i _)]
+    rw [star_mul, star_star, mySesquilinear_apply]
+  add_left a b c := by
+    repeat rw [mySesquilinear_apply]
+    rw [← map_add]
+    congr
+    #check norm a
+    sorry
+  smul_left _ _ _ := sorry
+-- see https://leanprover.zulipchat.com/#narrow/channel/113489-new-members/topic/Proving.20Quotient.20Structures/with/545799315
 
 
 
@@ -320,6 +335,66 @@ def N (f : A →ₚ[ℂ] ℂ) : Submodule ℂ A where
 
 
 /-
+
+
+#check (mySesquilinear f) p
+#check preHil
+#check (A ⧸ N f)
+#check Quotient.lift (mySesquilinear f)
+
+theorem helper (b : A) :  N f ≤ LinearMap.ker ((mySesquilinear f) b) := by
+  intro a ainNf
+  rw [LinearMap.mem_ker, mySesquilinear_apply]
+  have faaZero : f (star a * a) = 0 := by exact ainNf
+  -- the code chunk below is re-used a lot. Consider refactor
+  have hab := aupetit_6_2_15ii f (star b) (star a)
+  rw [star_star, star_star] at hab
+  rw [faaZero, mul_zero] at hab
+  norm_cast at hab
+  rwa [sq_nonpos_iff, norm_eq_zero] at hab
+
+noncomputable
+def secondHalf := Submodule.liftQ (N f) ((mySesquilinear f) p) ((helper f) p)
+#check secondHalf f
+
+noncomputable
+def linearSecondHalf : LinearMap (starRingEnd ℂ) A (A ⧸ N f →ₗ[ℂ] ℂ) where
+  toFun := (secondHalf f)
+  map_add' := by
+    intro x y
+    dsimp [secondHalf]
+    simp only [map_add]
+    ext x_1 : 2
+    simp_all only [Submodule.liftQ_mkQ, LinearMap.add_apply,
+      mySesquilinear_apply, LinearMap.coe_comp,
+      Function.comp_apply, Submodule.mkQ_apply, Submodule.liftQ_apply]
+  map_smul' := by
+    intro c x
+    dsimp [secondHalf]
+    simp only [LinearMap.map_smulₛₗ]
+    ext x_1 : 2
+    simp_all only [Submodule.liftQ_mkQ, LinearMap.smul_apply,
+      mySesquilinear_apply, smul_eq_mul, LinearMap.coe_comp,
+      Function.comp_apply, Submodule.mkQ_apply, Submodule.liftQ_apply] -- was aesop
+
+theorem helper2 : N f ≤ LinearMap.ker (linearSecondHalf f) := by
+  intro a ainNf
+  rw [LinearMap.mem_ker]
+  dsimp [linearSecondHalf, secondHalf]
+  ext b
+  have faaZero : f (star a * a) = 0 := by exact ainNf
+  have hab := aupetit_6_2_15ii f (star a) (star b)
+  rw [star_star, star_star] at hab
+  rw [faaZero, zero_mul] at hab
+  norm_cast at hab
+  rw [sq_nonpos_iff, norm_eq_zero] at hab
+  simp_all only [Submodule.liftQ_mkQ, mySesquilinear_apply,
+    LinearMap.zero_comp, LinearMap.zero_apply] -- was aesop
+
+
+noncomputable
+def myLiftedSequiLinar := Submodule.liftQ (N f) (linearSecondHalf f) (helper2 f)
+#check myLiftedSequiLinar f
 
 --theorem aupetit6_2_18_closed : IsClosed {a : A | f (star a * a) = 0} := by sorry
 variable (f : A →ₚ[ℂ] ℂ)
@@ -359,38 +434,6 @@ theorem mySesquilinear_apply (f : A →ₚ[ℂ] ℂ) (x y : A) :
   mySesquilinear f x y = f (star x * y) := rfl
 -- End code from Eric Wieser
 
-lemma add_mem_helper (f : A →ₚ[ℂ] ℂ) (a b : A) : a ∈ {a | f (star a * a) = 0}
-  → b ∈ {a | f (star a * a) = 0} → a + b ∈ {a | f (star a * a) = 0} := by
-  simp
-  intro h1 h2
-  have : f (star (a + b) * (a + b)) = f ((star a + star b) * (a + b)) := by simp
-  have : 0 ≤ star (a + b) * (a + b) := by exact star_mul_self_nonneg (a+b)
-  have : 0 ≤ f (star (a + b) * (a + b)) := by exact PositiveLinearMap.map_nonneg f this
-
-  rw [mul_add, add_mul, add_mul, ← add_assoc]
-  have : f (star a * a + star b * a + star a * b + star b * b)
-    = f (star a * a) + f (star b * a) + f (star a * b) + f (star b * b) := by simp
-  rw [this]
-  rw [h1, h2]
-
-  ring_nf
-  sorry
-
-lemma myCS (f : A →ₚ[ℂ] ℂ) (a b : A) :
-  norm (f (star b * a)) ^ 2 ≤ f (star b * b) * f (star a * a) := by
-  rw [← mySesquilinear_apply f a a, ← mySesquilinear_apply f b b, ← mySesquilinear_apply f b a]
-  sorry
-
-lemma smul_mem_helper (f : A →ₚ[ℂ] ℂ) (b : A) {a : A} : a ∈ {a | f (star a * a) = 0}
-  → b • a ∈ {a | f (star a * a) = 0} := by
-  rw [Set.mem_setOf, Set.mem_setOf]
-  intro h
-  #check mySesquilinear_apply f a a
-  rw [← mySesquilinear_apply f a a] at h
-  rw [← mySesquilinear_apply f (b • a) (b • a)]
-
-
-  sorry
 -/
 /-
 To-do: define A/N f, and the inner product on it
