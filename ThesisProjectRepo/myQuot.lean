@@ -14,11 +14,11 @@ def toFunctional : A → WithFunctional A f := id
 /-- The canonical inclusion of `WithFunctional A f` into `A`. -/
 def ofFunctional : WithFunctional A f → A := id
 
-instance instAddCommGroup [AddCommGroup A] : AddCommGroup (WithFunctional A f) := ‹AddCommGroup A›
-instance instSemiring [Semiring A] : Semiring (WithFunctional A f) := ‹Semiring A›
-instance instNonUnitalNonAssocSemiring [NonUnitalNonAssocSemiring A] :
+instance [AddCommGroup A] : AddCommGroup (WithFunctional A f) := ‹AddCommGroup A›
+instance [Semiring A] : Semiring (WithFunctional A f) := ‹Semiring A›
+instance [NonUnitalNonAssocSemiring A] :
   NonUnitalNonAssocSemiring (WithFunctional A f) := ‹NonUnitalNonAssocSemiring A›
-instance instModule [Semiring ℂ] [AddCommGroup A] [Module ℂ A] :
+instance [Semiring ℂ] [AddCommGroup A] [Module ℂ A] :
   Module ℂ (WithFunctional A f) := ‹Module ℂ (WithFunctional A f)›
 
 instance ofFunctionalLinear : LinearMap (RingHom.id ℂ) (WithFunctional A f) A where
@@ -73,8 +73,10 @@ instance mySubModule (f : A →ₚ[ℂ] ℂ) : Submodule ℂ (WithFunctional A f
 -- noncomputability should be fixed in by Eric Wieser's bug fix
 noncomputable def mySesquilinear (f : A →ₚ[ℂ] ℂ) :
   (WithFunctional A f) →ₗ⋆[ℂ] (WithFunctional A f) →ₗ[ℂ] ℂ :=
-  (LinearMap.mul ℂ (WithFunctional A f)).comp (starLinearEquiv ℂ (A := (WithFunctional A f)) :
-    (WithFunctional A f) →ₗ⋆[ℂ] (WithFunctional A f)) |>.compr₂ₛₗ
+  (LinearMap.mul ℂ (WithFunctional A f)).comp
+  (starLinearEquiv ℂ (A := (WithFunctional A f)) :
+    (WithFunctional A f) →ₗ⋆[ℂ] (WithFunctional A f))
+    |>.compr₂ₛₗ
     (f.comp (ofFunctionalLinear f))
 
 @[simp]
@@ -86,13 +88,127 @@ theorem mySesquilinear_apply (f : A →ₚ[ℂ] ℂ) (x y : (WithFunctional A f)
 def myQuot := (WithFunctional A f) ⧸ (mySubModule f)
 #check myQuot f
 
+
+def toQuot : (myQuot f) → (WithFunctional A f) ⧸ (mySubModule f) := id
+def toMyQuot : (WithFunctional A f) ⧸ (mySubModule f) → (myQuot f) := id
+def modOut := Submodule.Quotient.mk (M := (WithFunctional A f)) (p := (mySubModule f))
+
 instance : AddCommGroup (myQuot f) := by unfold myQuot; infer_instance
 instance : Module ℂ (myQuot f) := by unfold myQuot; infer_instance
 
+theorem helper (a : WithFunctional A f) : mySubModule f ≤ LinearMap.ker ((mySesquilinear f a)) := by
+  intro b bh
+  rw [LinearMap.mem_ker, mySesquilinear_apply]
+  have bhzero : f (star b * b) = 0 := by exact bh
+  have hab := aupetit_6_2_15ii f (star a) (star b)
+  rw [star_star, star_star] at hab
+  rw [bh, mul_zero] at hab
+  norm_cast at hab
+  rwa [sq_nonpos_iff, norm_eq_zero] at hab
+
+theorem helper' : mySubModule f ≤ LinearMap.ker (mySesquilinear f) := by
+  intro a ah
+  ext b
+  rw [mySesquilinear_apply]
+  simp only [LinearMap.zero_apply]
+  have bhzero : f (star a * a) = 0 := by exact ah
+
+  have hab := aupetit_6_2_15ii f (star a) (star b)
+  rw [star_star, star_star] at hab
+  rw [ah, zero_mul] at hab
+  norm_cast at hab
+  rwa [sq_nonpos_iff, norm_eq_zero] at hab
+
+theorem helper2 (a : myQuot f) :
+  mySubModule f ≤ LinearMap.ker (((mySubModule f).liftQ (mySesquilinear f) (helper' f)) a) := by
+  intro b bh
+  rw [LinearMap.mem_ker]
+  have bhzero : f (star b * b) = 0 := by exact bh
+
+
+  sorry
+
+
+noncomputable def myHalf (p : WithFunctional A f) : WithFunctional A f ⧸ mySubModule f →ₗ[ℂ] ℂ
+  := Submodule.liftQ (mySubModule f) (mySesquilinear f p) (helper f p)
+#check myHalf f -- WithFunctional A f → WithFunctional A f ⧸ mySubModule f →ₗ[ℂ] ℂ
+noncomputable instance myHalfSQ :
+  LinearMap (starRingEnd ℂ) (WithFunctional A f) (WithFunctional A f ⧸ mySubModule f →ₗ[ℂ] ℂ) where
+  toFun := myHalf f
+  map_add' a b := by
+    unfold myHalf
+    simp_all only [map_add]
+    ext x : 2
+    simp_all only [Submodule.liftQ_mkQ, LinearMap.add_apply, mySesquilinear_apply,
+      LinearMap.coe_comp, Function.comp_apply, Submodule.mkQ_apply, Submodule.liftQ_apply]
+  map_smul' a b := by
+    unfold myHalf
+    simp_all only [LinearMap.map_smulₛₗ]
+    ext x : 2
+    simp_all only [Submodule.liftQ_mkQ, LinearMap.smul_apply, mySesquilinear_apply,
+      smul_eq_mul, LinearMap.coe_comp, Function.comp_apply, Submodule.mkQ_apply,
+      Submodule.liftQ_apply]
+
+#check myHalfSQ f -- now lift it
+#check Submodule.liftQ (mySubModule f) (myHalfSQ f)
+
+theorem halfHelper : mySubModule f ≤ LinearMap.ker (myHalfSQ f) := by
+  intro a ah
+  simp only [LinearMap.mem_ker]
+  change (myHalf f) a = 0
+  unfold myHalf
+  have : f (star a * a) = 0 := ah
+  ext b
+  rw [Submodule.liftQ_mkQ, mySesquilinear_apply, LinearMap.zero_comp, LinearMap.zero_apply]
+
+
+  have hab := aupetit_6_2_15ii f (star a) (star b)
+  rw [star_star, star_star] at hab
+  rw [ah, zero_mul] at hab
+  norm_cast at hab
+  rwa [sq_nonpos_iff, norm_eq_zero] at hab
+
+
+noncomputable def myInner := Submodule.liftQ (mySubModule f) (myHalfSQ f) (halfHelper f)
+
+-- now prove sesquilinear and lift myHalfSQ
+
+-- the goal if a function of the type
+-- WithFunctional A f ⧸ mySubModule f →ₗ⋆[ℂ] WithFunctional A f ⧸ mySubModule f →ₗ[ℂ] ℂ
+
+-- multiplfy them together first and then compute the functional
+
+noncomputable def myF := f.comp (ofFunctionalLinear f)
+-- make a lifted f
+theorem helperF : mySubModule f ≤ LinearMap.ker (myF f) := by
+  intro a ah
+  simp only [LinearMap.mem_ker]
+  have ahzero : f (star a * a) = 0 := by exact ah
+  change f a = 0
+
+  have hab := aupetit_6_2_15ii f (1) (star a)
+  rw [star_star] at hab
+  rw [ah, mul_zero] at hab
+  norm_cast at hab
+  rwa [sq_nonpos_iff, norm_eq_zero, one_mul] at hab
+
+noncomputable def liftedF := Submodule.liftQ (mySubModule f) (myF f) (helperF f)
+#check liftedF f
+
+variable (a b : myQuot f)
+
+#check Submodule.liftQ (mySubModule f) (Submodule.liftQ (mySubModule f) (mySesquilinear f) (helper' f) a)
+#check Submodule.liftQ (mySubModule f) (mySesquilinear f ?m) (helper f ?m)
+#check Submodule.liftQ (mySubModule f) (mySesquilinear f) (helper' f)
+
+#check myInner f
+
 noncomputable instance myInnerProductSpace : InnerProductSpace.Core ℂ (myQuot f) where
-  inner a b := sorry
+  inner a b := myInner f a b
   conj_inner_symm := sorry
   re_inner_nonneg := sorry
   add_left := sorry
   smul_left := sorry
   definite := sorry
+
+end WithFunctional
