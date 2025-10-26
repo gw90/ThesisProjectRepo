@@ -228,35 +228,25 @@ noncomputable instance myInnerProductSpace : InnerProductSpace.Core ℂ (myQuot 
       apply (Submodule.Quotient.mk_eq_zero (mySubModule f) (x := a)).mpr
       assumption
 
-noncomputable def toComplete := InnerProductSpace.ofCore (myInnerProductSpace f)
+noncomputable
+instance : NormedAddCommGroup (myQuot f) :=
+  InnerProductSpace.Core.toNormedAddCommGroup (cd := myInnerProductSpace f)
 
-instance : SeminormedAddCommGroup (myQuot f) where
-  norm a := (myInner f a a).re
-  dist_self a := by simp
-  dist_comm a b := by
-    induction a using Submodule.Quotient.induction_on with | _ a
-    · induction b using Submodule.Quotient.induction_on with | _ b
-      · rw [← Submodule.Quotient.mk_sub, ← Submodule.Quotient.mk_sub]
-        simp only [fEquiv f, mySesquilinear_apply]
-        have : 1 * (a-b) = a-b := by simp
-        nth_rw 1 [← this]
-        have : (1 : A) = -1 * -1 := by simp
-        rw [this]
-        have aux : -1 * (a - b) = b - a := by simp
-        rw [mul_assoc, aux]
-        have : star (-1 * (b - a)) = -1 * star (b - a) := by simp
-        rw [this]
-        have : -1 * star (b - a) = star (b - a) * -1 := by simp
-        rw [this, mul_assoc, aux]
-  dist_triangle a b c := by
-    induction a using Submodule.Quotient.induction_on with | _ a
-    · induction b using Submodule.Quotient.induction_on with | _ b
-      · induction c using Submodule.Quotient.induction_on with | _ c
-        · repeat rw [← Submodule.Quotient.mk_sub]
-          simp only [fEquiv, mySesquilinear_apply]
-          sorry
+noncomputable
+instance : InnerProductSpace ℂ (myQuot f) := InnerProductSpace.ofCore (myInnerProductSpace f)
 
-#check toComplete f
-#check UniformSpace.Completion.innerProductSpace
+noncomputable
+def myHilbert := UniformSpace.Completion.innerProductSpace (E := (myQuot f)) (𝕜 := ℂ)
+
+#check myHilbert f
+
+def H := UniformSpace.Completion (myQuot f)
+noncomputable instance : UniformSpace (H f) := by unfold H; infer_instance
+instance : CompleteSpace (H f) := by unfold H; infer_instance
+noncomputable instance : NormedAddCommGroup (H f) := by unfold H; infer_instance
+noncomputable instance : InnerProductSpace ℂ (H f) := by unfold H; infer_instance
+instance : HilbertSpace ℂ (H f) := by exact { }
+
+
 
 end WithFunctional
