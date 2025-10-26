@@ -1,4 +1,6 @@
 import ThesisProjectRepo.AupetitTheorems
+import Mathlib.Analysis.InnerProductSpace.Completion
+
 set_option linter.unusedSectionVars false -- remove later
 open scoped ComplexOrder
 
@@ -129,7 +131,6 @@ theorem helper2 (a : myQuot f) :
 
   sorry
 
-
 noncomputable def myHalf (p : WithFunctional A f) : WithFunctional A f ⧸ mySubModule f →ₗ[ℂ] ℂ
   := Submodule.liftQ (mySubModule f) (mySesquilinear f p) (helper f p)
 #check myHalf f -- WithFunctional A f → WithFunctional A f ⧸ mySubModule f →ₗ[ℂ] ℂ
@@ -171,13 +172,6 @@ theorem halfHelper : mySubModule f ≤ LinearMap.ker (myHalfSQ f) := by
 
 noncomputable def myInner := Submodule.liftQ (mySubModule f) (myHalfSQ f) (halfHelper f)
 
--- now prove sesquilinear and lift myHalfSQ
-
--- the goal if a function of the type
--- WithFunctional A f ⧸ mySubModule f →ₗ⋆[ℂ] WithFunctional A f ⧸ mySubModule f →ₗ[ℂ] ℂ
-
--- multiplfy them together first and then compute the functional
-
 noncomputable def myF := f.comp (ofFunctionalLinear f)
 -- make a lifted f
 theorem helperF : mySubModule f ≤ LinearMap.ker (myF f) := by
@@ -193,15 +187,6 @@ theorem helperF : mySubModule f ≤ LinearMap.ker (myF f) := by
   rwa [sq_nonpos_iff, norm_eq_zero, one_mul] at hab
 
 noncomputable def liftedF := Submodule.liftQ (mySubModule f) (myF f) (helperF f)
-#check liftedF f
-
-variable (a b : myQuot f)
-
-#check Submodule.liftQ (mySubModule f) (Submodule.liftQ (mySubModule f) (mySesquilinear f) (helper' f) a)
-#check Submodule.liftQ (mySubModule f) (mySesquilinear f ?m) (helper f ?m)
-#check Submodule.liftQ (mySubModule f) (mySesquilinear f) (helper' f)
-
-#check myInner f
 
 theorem fEquiv (a b : WithFunctional A f) :
   ((myInner f) (Submodule.Quotient.mk a)) (Submodule.Quotient.mk b) = mySesquilinear f a b := by rfl
@@ -218,7 +203,7 @@ noncomputable instance myInnerProductSpace : InnerProductSpace.Core ℂ (myQuot 
         simp only [star_mul, star_star]
   re_inner_nonneg a := by
     induction a using Submodule.Quotient.induction_on with | _ a
-    . rw [fEquiv f a a, mySesquilinear_apply, RCLike.re_to_complex]
+    · rw [fEquiv f a a, mySesquilinear_apply, RCLike.re_to_complex]
       have nonneg : 0 ≤ star (ofFunctional f a) * (ofFunctional f a) :=
         star_mul_self_nonneg (ofFunctional f a)
       have := fOfxStarxIsReal f (star a)
@@ -243,6 +228,35 @@ noncomputable instance myInnerProductSpace : InnerProductSpace.Core ℂ (myQuot 
       apply (Submodule.Quotient.mk_eq_zero (mySubModule f) (x := a)).mpr
       assumption
 
-#check myInnerProductSpace f
+noncomputable def toComplete := InnerProductSpace.ofCore (myInnerProductSpace f)
+
+instance : SeminormedAddCommGroup (myQuot f) where
+  norm a := (myInner f a a).re
+  dist_self a := by simp
+  dist_comm a b := by
+    induction a using Submodule.Quotient.induction_on with | _ a
+    · induction b using Submodule.Quotient.induction_on with | _ b
+      · rw [← Submodule.Quotient.mk_sub, ← Submodule.Quotient.mk_sub]
+        simp only [fEquiv f, mySesquilinear_apply]
+        have : 1 * (a-b) = a-b := by simp
+        nth_rw 1 [← this]
+        have : (1 : A) = -1 * -1 := by simp
+        rw [this]
+        have aux : -1 * (a - b) = b - a := by simp
+        rw [mul_assoc, aux]
+        have : star (-1 * (b - a)) = -1 * star (b - a) := by simp
+        rw [this]
+        have : -1 * star (b - a) = star (b - a) * -1 := by simp
+        rw [this, mul_assoc, aux]
+  dist_triangle a b c := by
+    induction a using Submodule.Quotient.induction_on with | _ a
+    · induction b using Submodule.Quotient.induction_on with | _ b
+      · induction c using Submodule.Quotient.induction_on with | _ c
+        · repeat rw [← Submodule.Quotient.mk_sub]
+          simp only [fEquiv, mySesquilinear_apply]
+          sorry
+
+#check toComplete f
+#check UniformSpace.Completion.innerProductSpace
 
 end WithFunctional
