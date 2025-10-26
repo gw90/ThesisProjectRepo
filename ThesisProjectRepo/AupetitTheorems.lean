@@ -2,18 +2,11 @@ import Mathlib.Analysis.CStarAlgebra.PositiveLinearMap
 
 open ComplexConjugate
 open scoped ComplexOrder
-scoped[ComplexOrder] attribute [instance] Complex.partialOrder -- this is very important
 open Complex
 
 variable {A : Type*} [CStarAlgebra A] [PartialOrder A] [StarOrderedRing A]
 variable (f : A →ₚ[ℂ] ℂ)
--- LinearMap (starRingEnd R) M M₂
-variable (p : A) (q : A) -- for experimentation. remove later
--- set_option linter.unusedSectionVars false -- remove this at the end
 
-/-def myf (f : A →ₚ[ℂ] ℂ) : A →ₗ⋆[ℂ] A →ₗ[ℂ] ℂ :=
-  (LinearMap.mul ℂ A).comp (starLinearEquiv ℂ (A := A) : A →ₗ⋆[ℂ] A) |>.compr₂ₛₗ f
--/
 lemma aupetit_6_2_15lemma (x y : A) (l : ℂ) :
   0 ≤ f (x * star x) + l * f (y * star x) + (conj l) * f (x * star y)
     + l * (conj l) * f (y * star y) := by
@@ -27,10 +20,6 @@ lemma aupetit_6_2_15lemma (x y : A) (l : ℂ) :
       + l * (starRingEnd ℂ) l * f (y * star y) := by ring
   rwa [← h]
 
--- instance {F : Type*} [FunLike F A₁ A₂] [LinearMapClass F ℂ A₁ A₂] [OrderHomClass F A₁ A₂] :
---    StarHomClass F A₁ A₂
--- should give:
-open PositiveLinearMap
 theorem aupetit_6_2_15i (x : A) : f (star x) = conj (f x) := by simp [map_star]
 
 lemma fOfxStarxIsReal (x : A) : (f (x * star x)).re = f (x * star x) := by
@@ -48,11 +37,6 @@ lemma fOfxStarxHas0Im (x : A) : (f (x * star x)).im = 0 := by
   rw [(aupetit_6_2_15i f (x * star x))] at fstareqfnostar
   apply Complex.conj_eq_iff_im.mp fstareqfnostar
 
-example (c : ℂ) : norm c ^ 2 = c * conj c := by exact Eq.symm (mul_conj' c)
-
-
--- initally did the proof with (t : ℝ), but then when I changed it, it immediately hilighted
--- the step that failed, so I could go, rigirously repair the proof step by step
 lemma aupetit_6_2_15iilemma (t : ℂ) (ht : t = conj t) (x y : A) (h : f (x * star y) ≠ 0) :
   0 ≤ f (x * star x) + 2 * t * norm (f (x * star y)) + t^2 * f (y * star y) := by
   have := aupetit_6_2_15lemma f x y ((t * f (x * star y))/(norm (f (x * star y))))
@@ -203,8 +187,7 @@ theorem aupetit_6_2_15iiia (x : A) : norm (f x) ^ 2 ≤ f (1 : A) * f (x * star 
   have := aupetit_6_2_15ii f x (1 : A)
   rwa [star_one, mul_one, mul_one, mul_comm] at this
 
--- From Aupetit leamm 6.2.18
--- should probably use module ideal? see 10.1.1 MIL
+-- Ring Ideal
 def M (f : A →ₚ[ℂ] ℂ) : Ideal A where
   carrier := {a : A | f (star a * a) = 0}
   add_mem' := by
@@ -243,12 +226,7 @@ def M (f : A →ₚ[ℂ] ℂ) : Ideal A where
     rw [sq_nonpos_iff, norm_eq_zero] at this
     assumption -- exact this
 
--- TO-DO: figure out if I'm using the right kind of Ideals/Quotients
--- https://leanprover-community.github.io/mathlib4_docs/Mathlib/LinearAlgebra/Quotient/Defs.html
--- I think I should maybe use module ideals/quotients because algebras extend vector spaces
--- Is that just a submodule? Is that what I really need?
--- https://leanprover-community.github.io/mathematics_in_lean/C10_Linear_Algebra.html#quotient-spaces
-
+-- Module ideal/submodule
 def N (f : A →ₚ[ℂ] ℂ) : Submodule ℂ A where
   carrier := {a : A | f (star a * a) = 0}
   add_mem' := by
@@ -281,269 +259,3 @@ def N (f : A →ₚ[ℂ] ℂ) : Submodule ℂ A where
       smul_eq_mul, mul_eq_zero, map_eq_zero, or_self_left]
     right
     exact hx
-
--- Begin code from Eric Wieser
--- noncomputability should be fixed in by Eric Wieser's bug fix
-noncomputable def mySesquilinear (f : A →ₚ[ℂ] ℂ) : A →ₗ⋆[ℂ] A →ₗ[ℂ] ℂ :=
-  (LinearMap.mul ℂ A).comp (starLinearEquiv ℂ (A := A) : A →ₗ⋆[ℂ] A) |>.compr₂ₛₗ f
-
-@[simp]
-theorem mySesquilinear_apply (f : A →ₚ[ℂ] ℂ) (x y : A) :
-  mySesquilinear f x y = f (star x * y) := rfl
--- End code from Eric Wieser
-
-def myQuotient (_A : Type*) [CStarAlgebra _A] [PartialOrder _A] (_f : _A →ₚ[ℂ] ℂ) := _A
-
-
-namespace WithFunctional
-
-/-- The canonical inclusion of `A` into `WithFunctional A f`. -/
-def toFunctional : A → WithFunctional A f := id
-
-/-- The canonical inclusion of `WithFunctional A f` into `A`. -/
-def ofFunctional : WithFunctional A f → A := id
-
-/-- `WithFunctional.toFunctional` and `WithFunctional.toFunctional` as an equivalence. -/
-@[simps]
-protected def equiv : WithFunctional A f ≃ A where
-  toFun := ofFunctional f
-  invFun := toFunctional f
-  left_inv _ := rfl
-  right_inv _ := rfl
-
-structure myQuot where
-  val : A ⧸ N f
-
-#check myQuot.val
-#check myQuot.mk
-
---def myQuot := (A ⧸ N f)
-
-namespace myQuot
-
-/-- The canonical inclusion of `A` into `myQuot A f`. -/
-def toMyQuot : (A ⧸ N f) → myQuot f := myQuot.mk
-
-/-- The canonical inclusion of `myQuot A f` into `A`. -/
-def ofMyQuot : myQuot f → (A ⧸ N f) := myQuot.val
-
-/-- `myQuot.toFunctional` and `myQuot.toFunctional` as an equivalence. -/
-@[simps]
-protected def equiv : myQuot f ≃ A ⧸ N f where
-  toFun := ofMyQuot f
-  invFun := toMyQuot f
-  left_inv _ := rfl
-  right_inv _ := rfl
-#check LinearEquiv
-
-instance instAddCommGroup : AddCommMonoid (myQuot f) where
-  add := by aesop
-  add_assoc := by aesop
-  zero := toMyQuot f (0 : A ⧸ N f)
-  zero_add := sorry
-  add_zero := sorry
-  nsmul := sorry
-  add_comm := sorry
-  nsmul_zero := sorry
-  nsmul_succ := sorry
-
--- instance instModule : Module ℂ (myQuot f) where
-
-#check LinearEquiv (RingHom.id ℂ) (myQuot f) (A ⧸ N f)
-
-@[simps]
-def linEquiv : LinearEquiv (RingHom.id ℂ) (myQuot f) (A ⧸ N f) where
-  toFun := ofMyQuot f
-  invFun := toMyQuot f
-  left_inv _ := rfl
-  right_inv _ := rfl
-  map_add' := sorry
-  map_smul' := sorry
-
-
-
---instance instNonUnitalNonAssocSemiring [NonUnitalNonAssocSemiring A] :
-  --NonUnitalNonAssocSemiring (myQuot f) := ‹NonUnitalNonAssocSemiring A›
-instance instModule [Semiring ℂ] [AddCommGroup A] [Module ℂ A] :
-  Module ℂ (myQuot f) := ‹Module ℂ (myQuot f)›
-
-/-
--- Some other properties I could specify:
-instance instStarAddMonoid [StarAddMonoid A] : StarAddMonoid (myQuot A f) :=
- ‹StarAddMonoid A›
-instance instAddCommMonoid [AddCommMonoid (StarAddMonoid A)] :
-  AddCommMonoid (StarAddMonoid (myQuot A f)) :=
- ‹AddCommMonoid (StarAddMonoid A)›
- variable [PartialOrder (myQuot A f)]
-instance instStarAddMonoidFunctional [StarAddMonoid (A →ₗ⋆[ℂ] A)] :
-  StarAddMonoid (myQuot A f →ₗ⋆[ℂ] myQuot A f) :=
-  ‹StarAddMonoid (A →ₗ⋆[ℂ] A)›
--/
-
-noncomputable def mySesquilinear (f : A →ₚ[ℂ] ℂ) : A →ₗ⋆[ℂ] A →ₗ[ℂ] ℂ :=
-  (LinearMap.mul ℂ A).comp (starLinearEquiv ℂ (A := A) : A →ₗ⋆[ℂ] A) |>.compr₂ₛₗ f
-
-noncomputable instance myInnerProductSpace : PreInnerProductSpace.Core ℂ (myQuot f) where
-  inner a b := mySesquilinear f a b
-  re_inner_nonneg := sorry
-  conj_inner_symm := sorry
-  add_left _ _ _ := LinearMap.map_add₂ _ _ _ _
-  smul_left _ _ _ := LinearMap.map_smulₛₗ₂ _ _ _ _
-
-def myInner (a b : myQuot A f) : ℂ := f (star b * a)
-#check myInner f
-
-
--- have to lift both the function and its inner function
--- https://leanprover-community.github.io/mathlib4_docs/Mathlib/LinearAlgebra/Quotient/Basic.html
--- use liftQ and mapQ
-
-noncomputable instance myInnerProductSpace : InnerProductSpace.Core ℂ (A ⧸ N f) where
-  inner a b := mySesquilinear f (Quotient.out a) (Quotient.out b)
-  re_inner_nonneg := by
-    intro a
-    rw [mySesquilinear_apply, RCLike.re_to_complex]
-    have := star_mul_self_nonneg (Quotient.out a)
-    have := PositiveLinearMap.map_nonneg f this
-    have := re_le_re this
-    exact this
-  definite := by
-    intro a h
-    rw [mySesquilinear_apply] at h
-    have := (Submodule.Quotient.mk_eq_zero (N f)).mpr h
-    rwa [Submodule.Quotient.mk_out] at this
-  conj_inner_symm := by
-    intro a b
-    rw [mySesquilinear_apply]
-    rw [← (aupetit_6_2_15i _)]
-    rw [star_mul, star_star, mySesquilinear_apply]
-  add_left a b c := by
-    repeat rw [mySesquilinear_apply]
-    rw [← map_add]
-    congr
-    #check norm a
-    sorry
-  smul_left _ _ _ := sorry
--- see https://leanprover.zulipchat.com/#narrow/channel/113489-new-members/topic/Proving.20Quotient.20Structures/with/545799315
-
-
-
-
-
-
-
-
-
-
-
-/-
-
-
-#check (mySesquilinear f) p
-#check preHil
-#check (A ⧸ N f)
-#check Quotient.lift (mySesquilinear f)
-
-theorem helper (b : A) :  N f ≤ LinearMap.ker ((mySesquilinear f) b) := by
-  intro a ainNf
-  rw [LinearMap.mem_ker, mySesquilinear_apply]
-  have faaZero : f (star a * a) = 0 := by exact ainNf
-  -- the code chunk below is re-used a lot. Consider refactor
-  have hab := aupetit_6_2_15ii f (star b) (star a)
-  rw [star_star, star_star] at hab
-  rw [faaZero, mul_zero] at hab
-  norm_cast at hab
-  rwa [sq_nonpos_iff, norm_eq_zero] at hab
-
-noncomputable
-def secondHalf := Submodule.liftQ (N f) ((mySesquilinear f) p) ((helper f) p)
-#check secondHalf f
-
-noncomputable
-def linearSecondHalf : LinearMap (starRingEnd ℂ) A (A ⧸ N f →ₗ[ℂ] ℂ) where
-  toFun := (secondHalf f)
-  map_add' := by
-    intro x y
-    dsimp [secondHalf]
-    simp only [map_add]
-    ext x_1 : 2
-    simp_all only [Submodule.liftQ_mkQ, LinearMap.add_apply,
-      mySesquilinear_apply, LinearMap.coe_comp,
-      Function.comp_apply, Submodule.mkQ_apply, Submodule.liftQ_apply]
-  map_smul' := by
-    intro c x
-    dsimp [secondHalf]
-    simp only [LinearMap.map_smulₛₗ]
-    ext x_1 : 2
-    simp_all only [Submodule.liftQ_mkQ, LinearMap.smul_apply,
-      mySesquilinear_apply, smul_eq_mul, LinearMap.coe_comp,
-      Function.comp_apply, Submodule.mkQ_apply, Submodule.liftQ_apply] -- was aesop
-
-theorem helper2 : N f ≤ LinearMap.ker (linearSecondHalf f) := by
-  intro a ainNf
-  rw [LinearMap.mem_ker]
-  dsimp [linearSecondHalf, secondHalf]
-  ext b
-  have faaZero : f (star a * a) = 0 := by exact ainNf
-  have hab := aupetit_6_2_15ii f (star a) (star b)
-  rw [star_star, star_star] at hab
-  rw [faaZero, zero_mul] at hab
-  norm_cast at hab
-  rw [sq_nonpos_iff, norm_eq_zero] at hab
-  simp_all only [Submodule.liftQ_mkQ, mySesquilinear_apply,
-    LinearMap.zero_comp, LinearMap.zero_apply] -- was aesop
-
-
-noncomputable
-def myLiftedSequiLinar := Submodule.liftQ (N f) (linearSecondHalf f) (helper2 f)
-#check myLiftedSequiLinar f
-
---theorem aupetit6_2_18_closed : IsClosed {a : A | f (star a * a) = 0} := by sorry
-variable (f : A →ₚ[ℂ] ℂ)
-#check N f
-#check Ideal.coe_closure (N f)
-#check (N f).closure
-#check ((N f) : Set A)
-
-theorem aupetit6_2_18_closed' : (N f) = (N f).closure := by sorry
-
-theorem aupetit6_2_18_closed : IsClosed ((N f) : Set A) := by sorry
-
-variable (x : A)
-#check x * star x
-#check spectralRadius ℂ (x * star x)
-#check (spectralRadius ℂ (x * star x)).toReal
-#check IsSelfAdjoint.spectralRadius_eq_nnnorm
-#check IsSelfAdjoint.toReal_spectralRadius_complex_eq_norm
-
--- Notation: ρ is spectral radius!!
-theorem aupetit_6_2_15iiib (x : A) :
-  f (1 : A) * f (x * star x) ≤ ((f (1 : A)) ^ 2) * (spectralRadius ℂ (x * star x)).toReal := by
-  sorry
-
--- theorem aupetit_6_2_15iiic (x : A) : norm (f x) ≤ f (1 : A) * norm x  := by sorry
-
-
--- theorem aupetit_6_2_15iiid : norm (f) = f (1 : A)  := by sorry
-
--- Begin code from Eric Wieser
--- noncomputability should be fixed in by Eric Wieser's bug fix
-noncomputable def mySesquilinear (f : A →ₚ[ℂ] ℂ) : A →ₗ⋆[ℂ] A →ₗ[ℂ] ℂ :=
-  (LinearMap.mul ℂ A).comp (starLinearEquiv ℂ (A := A) : A →ₗ⋆[ℂ] A) |>.compr₂ₛₗ f
-
-@[simp]
-theorem mySesquilinear_apply (f : A →ₚ[ℂ] ℂ) (x y : A) :
-  mySesquilinear f x y = f (star x * y) := rfl
--- End code from Eric Wieser
-
--/
-/-
-To-do: define A/N f, and the inner product on it
-- define the semi-inner product/positive semidefinite sesquilinar form, from 138 8.0.10
-- or maybe define the full inner product from 8.0.14
-- set up all relevant statements with sorries first
-- maybe refactor so that the ideal definition is actually easy to prove
-- make the partial order on the CStarAlgebra explicit so that I can use
-  non-negativity of certain elements, like a* a (I think StarOrderedRing does this)
-- enable the better star notation
--/
