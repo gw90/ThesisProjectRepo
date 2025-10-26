@@ -1,6 +1,7 @@
 import ThesisProjectRepo.AupetitTheorems
 set_option linter.unusedSectionVars false -- remove later
 open scoped ComplexOrder
+
 variable {A : Type*} [CStarAlgebra A] [PartialOrder A] [StarOrderedRing A]
 variable (f : A →ₚ[ℂ] ℂ)
 
@@ -168,7 +169,6 @@ theorem halfHelper : mySubModule f ≤ LinearMap.ker (myHalfSQ f) := by
   norm_cast at hab
   rwa [sq_nonpos_iff, norm_eq_zero] at hab
 
-
 noncomputable def myInner := Submodule.liftQ (mySubModule f) (myHalfSQ f) (halfHelper f)
 
 -- now prove sesquilinear and lift myHalfSQ
@@ -203,12 +203,46 @@ variable (a b : myQuot f)
 
 #check myInner f
 
+theorem fEquiv (a b : WithFunctional A f) :
+  ((myInner f) (Submodule.Quotient.mk a)) (Submodule.Quotient.mk b) = mySesquilinear f a b := by rfl
+
+
 noncomputable instance myInnerProductSpace : InnerProductSpace.Core ℂ (myQuot f) where
   inner a b := myInner f a b
-  conj_inner_symm := sorry
-  re_inner_nonneg := sorry
-  add_left := sorry
-  smul_left := sorry
-  definite := sorry
+  conj_inner_symm a b := by
+    induction a using Submodule.Quotient.induction_on with | _ a
+    · induction b using Submodule.Quotient.induction_on with | _ b
+      · rw [fEquiv f a b, fEquiv f b a]
+        simp only [mySesquilinear_apply]
+        rw [← aupetit_6_2_15i f (star b * a)]
+        simp only [star_mul, star_star]
+  re_inner_nonneg a := by
+    induction a using Submodule.Quotient.induction_on with | _ a
+    . rw [fEquiv f a a, mySesquilinear_apply, RCLike.re_to_complex]
+      have nonneg : 0 ≤ star (ofFunctional f a) * (ofFunctional f a) :=
+        star_mul_self_nonneg (ofFunctional f a)
+      have := fOfxStarxIsReal f (star a)
+      simp at this
+      have zeroleq : 0 ≤ f (star a * a) := PositiveLinearMap.map_nonneg f nonneg
+      rw [← this] at zeroleq
+      exact Complex.zero_le_real.mp zeroleq
+  add_left a b c := by
+    induction a using Submodule.Quotient.induction_on with | _ a
+    · induction b using Submodule.Quotient.induction_on with | _ b
+      · induction c using Submodule.Quotient.induction_on with | _ c
+        · rw [map_add, LinearMap.add_apply]
+  smul_left a b c := by
+    induction a using Submodule.Quotient.induction_on with | _ a
+    · induction b using Submodule.Quotient.induction_on with | _ b
+      · rw [LinearMap.map_smulₛₗ, LinearMap.smul_apply, smul_eq_mul]
+  definite a := by
+    induction a using Submodule.Quotient.induction_on with | _ a
+    · rw [fEquiv f a a, mySesquilinear_apply]
+      intro ha
+      have : a ∈ mySubModule f := by exact ha
+      apply (Submodule.Quotient.mk_eq_zero (mySubModule f) (x := a)).mpr
+      assumption
+
+#check myInnerProductSpace f
 
 end WithFunctional
