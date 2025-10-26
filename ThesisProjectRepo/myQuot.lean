@@ -220,3 +220,7 @@ noncomputable instance : InnerProductSpace ℂ (H f) := by unfold H; infer_insta
 instance : HilbertSpace ℂ (H f) where
 
 end WithFunctional
+
+/-
+To-do: Move on to Aupetit 6.2.19
+-/
