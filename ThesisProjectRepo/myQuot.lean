@@ -80,7 +80,7 @@ instance : Module ℂ (myQuot f) := by unfold myQuot; infer_instance
 theorem helper (a : WithFunctional A f) : N f ≤ LinearMap.ker ((mySesquilinear f a)) := by
   intro b bh
   rw [LinearMap.mem_ker, mySesquilinear_apply]
-  have bhzero : f (star b * b) = 0 := by exact bh
+  have bhzero : f (star b * b) = 0 := bh
   have hab := aup_6_2_15ii f (star a) (star b)
   rw [star_star, star_star] at hab
   rw [bh, mul_zero] at hab
@@ -129,7 +129,7 @@ noncomputable def myF := f.comp (ofFunctionalLinear f)
 theorem helperF : N f ≤ LinearMap.ker (myF f) := by
   intro a ah
   simp only [LinearMap.mem_ker]
-  have ahzero : f (star a * a) = 0 := by exact ah
+  have ahzero : f (star a * a) = 0 := ah
   change f a = 0
   have hab := aup_6_2_15ii f (1) (star a)
   rw [star_star, ah, mul_zero] at hab
@@ -173,7 +173,7 @@ noncomputable instance myInnerProductSpace : InnerProductSpace.Core ℂ (myQuot 
     induction a using Submodule.Quotient.induction_on with | _ a
     · rw [fEquiv f a a, mySesquilinear_apply]
       intro ha
-      have : a ∈ N f := by exact ha
+      have : a ∈ N f := ha
       apply (Submodule.Quotient.mk_eq_zero (N f) (x := a)).mpr
       assumption
 
