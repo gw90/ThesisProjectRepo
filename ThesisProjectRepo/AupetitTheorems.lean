@@ -46,17 +46,12 @@ lemma aupetit_6_2_15iilemma (t : ℂ) (ht : t = conj t) (x y : A) (h : f (x * st
     calc
       f (y * star x) = f (star (x * star y)) := by simp
       _ = conj (f (x * star y)) := aupetit_6_2_15i (f) (x * star y)
-  rw [fact1] at this
-
   have fact2 := by
     calc
       ↑t * f (x * star y) / ↑‖f (x * star y)‖ * (starRingEnd ℂ) (f (x * star y)) =
     ↑t * (f (x * star y) * (starRingEnd ℂ) (f (x * star y))) / ↑‖f (x * star y)‖ := by field_simp
     _ = t * ↑‖f (x * star y)‖ ^ 2 / ↑‖f (x * star y)‖ := by rw [fact]
     _ = ↑t * ↑‖f (x * star y)‖ := by field_simp
-
-  rw [fact2] at this
-
   have fact3 :=
     calc
       ↑t * (starRingEnd ℂ) (f (x * star y)) / ↑‖f (x * star y)‖ * f (x * star y) =
@@ -64,34 +59,25 @@ lemma aupetit_6_2_15iilemma (t : ℂ) (ht : t = conj t) (x y : A) (h : f (x * st
       _ = t * ↑‖f (x * star y)‖ ^ 2 / ↑‖f (x * star y)‖ := by rw [fact]
       _ =  ↑t * ↑‖f (x * star y)‖  := by field_simp
 
-  rw [ht] at this
+  rw [fact1, fact2, ht] at this
   simp [fact3] at this
   have fact4 :
     ↑t * f (x * star y) / ↑‖f (x * star y)‖ *
-      (↑t * (starRingEnd ℂ) (f (x * star y)) / ↑‖f (x * star y)‖) *
-      f (y * star y) =
+      (↑t * (starRingEnd ℂ) (f (x * star y)) / ↑‖f (x * star y)‖) * f (y * star y) =
       (↑t^2 * (f (x * star y) * (starRingEnd ℂ) (f (x * star y))))/ ↑‖f (x * star y)‖ ^ 2 *
-      f (y * star y) := by field_simp
+        f (y * star y) := by field_simp
   rw [← ht, fact4, fact] at this
   field_simp at this
   nth_rw 2 [add_assoc] at this
   rwa [← two_mul, ← mul_assoc] at this
 
-theorem aupetit_6_2_15ii (x y : A) :
-  norm (f (x * star y)) ^ 2 ≤ f (x * star x) * f (y * star y) := by
-  have fxisreal := fOfxStarxIsReal f x
-  have fyisreal := fOfxStarxIsReal f y
+theorem aup_6_2_15ii (x y : A) : norm (f (x * star y)) ^ 2 ≤ f (x * star x) * f (y * star y) := by
   have fxx := fxx_eq_conj f x
-  have fyy := fxx_eq_conj f y
   have fxnonneg := PositiveLinearMap.map_nonneg f (mul_star_self_nonneg x)
   have fynonneg := PositiveLinearMap.map_nonneg f (mul_star_self_nonneg y)
   have fyyIm0: (f (y * star y)).im  = 0 := fOfxStarxHas0Im f y
-  have fxxIm0: (f (x * star x)).im  = 0 := fOfxStarxHas0Im f x
   have fxxEqConj: f (x * star x)  = conj (f (x * star x)) := Eq.symm fxx
-
-  have normIm0 : (norm (f (x * star y)) :ℂ ).im = 0 := rfl
   have fullProdIm0 := Complex.smul_im (-‖f (x * star y)‖) (f (y * star y))⁻¹
-
   have invIm0 : ((f (y * star y))⁻¹).im = 0 := by
     rw [inv_im, div_eq_zero_iff, neg_eq_zero, map_eq_zero]
     left
@@ -184,72 +170,26 @@ theorem aupetit_6_2_15ii (x y : A) :
   exact step5
 
 theorem aupetit_6_2_15iiia (x : A) : norm (f x) ^ 2 ≤ f (1 : A) * f (x * star x) := by
-  have := aupetit_6_2_15ii f x (1 : A)
+  have := aup_6_2_15ii f x (1 : A)
   rwa [star_one, mul_one, mul_one, mul_comm] at this
 
--- Ring Ideal
-def M (f : A →ₚ[ℂ] ℂ) : Ideal A where
-  carrier := {a : A | f (star a * a) = 0}
-  add_mem' := by
-    intro a b ha hb
-    rw [Set.mem_setOf_eq] at ha
-    rw [Set.mem_setOf_eq] at hb
-    rw [Set.mem_setOf_eq]
-    rw [star_add, left_distrib, right_distrib, right_distrib, ← add_assoc]
-    rw [map_add, map_add, map_add]
-    rw [ha, hb, add_zero, zero_add]
+lemma aux (a b : A) (h : f (star a * a) = 0) : f (star a * b) = 0 := by
+  have hab := aup_6_2_15ii f (star a) (star b)
+  rw [star_star, star_star] at hab
+  rw [h, zero_mul] at hab
+  norm_cast at hab
+  rwa [sq_nonpos_iff, norm_eq_zero] at hab
 
-    have hab := aupetit_6_2_15ii f (star a) (star b)
-    rw [star_star, star_star] at hab
-    rw [ha, hb, zero_mul] at hab
-    norm_cast at hab
-    rw [sq_nonpos_iff, norm_eq_zero] at hab
-
-
-    have hba := aupetit_6_2_15ii f (star b) (star a)
-    rw [star_star, star_star] at hba
-    rw [ha, hb, zero_mul] at hba
-    norm_cast at hba
-    rw [sq_nonpos_iff, norm_eq_zero] at hba
-
-    rw [hba, hab]
-    norm_num -- could be simp too
-  zero_mem' := by simp;
-  smul_mem' := by
-    intro c x hx
-    rw [Set.mem_setOf_eq] at hx
-    rw [Set.mem_setOf_eq]
-    rw [smul_eq_mul, star_mul, ← mul_assoc]
-    have := aupetit_6_2_15ii f (star x * star c * c) (star x)
-    rw [star_star, star_mul, hx, mul_zero] at this
-    norm_cast at this
-    rw [sq_nonpos_iff, norm_eq_zero] at this
-    assumption -- exact this
-
--- Module ideal/submodule
 def N (f : A →ₚ[ℂ] ℂ) : Submodule ℂ A where
   carrier := {a : A | f (star a * a) = 0}
   add_mem' := by
     intro a b ha hb
     rw [Set.mem_setOf_eq] at ha
     rw [Set.mem_setOf_eq] at hb
+    have hab := aux f a b ha
+    have hba := aux f b a hb
     rw [Set.mem_setOf_eq, star_add, left_distrib, right_distrib, right_distrib,
-      ← add_assoc, map_add, map_add, map_add, ha, hb, add_zero, zero_add]
-
-    have hab := aupetit_6_2_15ii f (star a) (star b)
-    rw [star_star, star_star] at hab
-    rw [ha, hb, zero_mul] at hab
-    norm_cast at hab
-    rw [sq_nonpos_iff, norm_eq_zero] at hab
-
-    have hba := aupetit_6_2_15ii f (star b) (star a)
-    rw [star_star, star_star] at hba
-    rw [ha, hb, zero_mul] at hba
-    norm_cast at hba
-    rw [sq_nonpos_iff, norm_eq_zero] at hba
-
-    rw [hba, hab]
-    norm_num -- could be simp too
+      ← add_assoc, map_add, map_add, map_add, ha, hb, add_zero, zero_add, hba, hab, add_zero]
   zero_mem' := by simp;
   smul_mem' := by
     intro c x hx

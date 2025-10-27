@@ -42,26 +42,14 @@ instance N (f : A →ₚ[ℂ] ℂ) : Submodule ℂ (WithFunctional A f) where
     intro a b ha hb
     rw [Set.mem_setOf_eq] at ha
     rw [Set.mem_setOf_eq] at hb
+    have hab := aux f a b ha
+    have hba := aux f b a hb
     rw [Set.mem_setOf_eq, star_add, left_distrib, right_distrib, right_distrib,
-      ← add_assoc, map_add, map_add, map_add, ha, hb, add_zero, zero_add]
-
-    have hab := aupetit_6_2_15ii f (star a) (star b)
-    rw [star_star, star_star] at hab
-    rw [ha, hb, zero_mul] at hab
-    norm_cast at hab
-    rw [sq_nonpos_iff, norm_eq_zero] at hab
-
-    have hba := aupetit_6_2_15ii f (star b) (star a)
-    rw [star_star, star_star] at hba
-    rw [ha, hb, zero_mul] at hba
-    norm_cast at hba
-    rw [sq_nonpos_iff, norm_eq_zero] at hba
-
-    rw [hba, hab]
-    norm_num -- could be simp too
+      ← add_assoc, map_add, map_add, map_add, ha, hb, add_zero, zero_add, hba,
+      hab, add_zero]
   zero_mem' := by simp
-  smul_mem' := by
-    intro c x hx
+  smul_mem' c := by
+    intro x hx
     rw [Set.mem_setOf_eq] at hx
     rw [Set.mem_setOf_eq, star_smul, RCLike.star_def, Algebra.mul_smul_comm,
       Algebra.smul_mul_assoc, map_smul, smul_eq_mul, mul_eq_zero, map_smul,
@@ -76,11 +64,10 @@ noncomputable def mySesquilinear :
   (LinearMap.mul ℂ (WithFunctional A f)).comp
   (starLinearEquiv ℂ (A := (WithFunctional A f)) :
     (WithFunctional A f) →ₗ⋆[ℂ] (WithFunctional A f))
-    |>.compr₂ₛₗ
-    (f.comp (ofFunctionalLinear f))
+    |>.compr₂ₛₗ (f.comp (ofFunctionalLinear f))
 
 @[simp]
-theorem mySesquilinear_apply (x y : (WithFunctional A f)):
+theorem mySesquilinear_apply (x y : (WithFunctional A f)) :
   mySesquilinear f x y = f (star x * y) := rfl
 -- End code from Eric Wieser
 
@@ -94,22 +81,9 @@ theorem helper (a : WithFunctional A f) : N f ≤ LinearMap.ker ((mySesquilinear
   intro b bh
   rw [LinearMap.mem_ker, mySesquilinear_apply]
   have bhzero : f (star b * b) = 0 := by exact bh
-  have hab := aupetit_6_2_15ii f (star a) (star b)
+  have hab := aup_6_2_15ii f (star a) (star b)
   rw [star_star, star_star] at hab
   rw [bh, mul_zero] at hab
-  norm_cast at hab
-  rwa [sq_nonpos_iff, norm_eq_zero] at hab
-
-theorem helper' : N f ≤ LinearMap.ker (mySesquilinear f) := by
-  intro a ah
-  ext b
-  rw [mySesquilinear_apply]
-  simp only [LinearMap.zero_apply]
-  have bhzero : f (star a * a) = 0 := by exact ah
-
-  have hab := aupetit_6_2_15ii f (star a) (star b)
-  rw [star_star, star_star] at hab
-  rw [ah, zero_mul] at hab
   norm_cast at hab
   rwa [sq_nonpos_iff, norm_eq_zero] at hab
 
@@ -142,7 +116,7 @@ theorem halfHelper : N f ≤ LinearMap.ker (myHalfSQ f) := by
   ext b
   rw [Submodule.liftQ_mkQ, mySesquilinear_apply, LinearMap.zero_comp, LinearMap.zero_apply]
 
-  have hab := aupetit_6_2_15ii f (star a) (star b)
+  have hab := aup_6_2_15ii f (star a) (star b)
   rw [star_star, star_star] at hab
   rw [ah, zero_mul] at hab
   norm_cast at hab
@@ -151,16 +125,14 @@ theorem halfHelper : N f ≤ LinearMap.ker (myHalfSQ f) := by
 noncomputable def myInner := Submodule.liftQ (N f) (myHalfSQ f) (halfHelper f)
 
 noncomputable def myF := f.comp (ofFunctionalLinear f)
--- make a lifted f
+
 theorem helperF : N f ≤ LinearMap.ker (myF f) := by
   intro a ah
   simp only [LinearMap.mem_ker]
   have ahzero : f (star a * a) = 0 := by exact ah
   change f a = 0
-
-  have hab := aupetit_6_2_15ii f (1) (star a)
-  rw [star_star] at hab
-  rw [ah, mul_zero] at hab
+  have hab := aup_6_2_15ii f (1) (star a)
+  rw [star_star, ah, mul_zero] at hab
   norm_cast at hab
   rwa [sq_nonpos_iff, norm_eq_zero, one_mul] at hab
 
@@ -205,11 +177,10 @@ noncomputable instance myInnerProductSpace : InnerProductSpace.Core ℂ (myQuot 
       apply (Submodule.Quotient.mk_eq_zero (N f) (x := a)).mpr
       assumption
 
-noncomputable
-instance : NormedAddCommGroup (myQuot f) :=
+noncomputable instance : NormedAddCommGroup (myQuot f) :=
   InnerProductSpace.Core.toNormedAddCommGroup (cd := myInnerProductSpace f)
-noncomputable
-instance : InnerProductSpace ℂ (myQuot f) := InnerProductSpace.ofCore (myInnerProductSpace f)
+noncomputable instance : InnerProductSpace ℂ (myQuot f) :=
+  InnerProductSpace.ofCore (myInnerProductSpace f)
 
 def H := UniformSpace.Completion (myQuot f)
 
@@ -221,6 +192,4 @@ instance : HilbertSpace ℂ (H f) where
 
 end WithFunctional
 
-/-
-To-do: Move on to Aupetit 6.2.19
--/
+-- To-do: Move on to Aupetit 6.2.19
