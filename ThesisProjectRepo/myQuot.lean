@@ -1,5 +1,6 @@
 import ThesisProjectRepo.AupetitTheorems
 import Mathlib.Analysis.InnerProductSpace.Completion
+import Mathlib.Topology.UniformSpace.Completion
 
 open scoped ComplexOrder
 
@@ -8,7 +9,7 @@ variable (f : A →ₚ[ℂ] ℂ)
 
 def WithFunctional (_A : Type*) [CStarAlgebra _A] [PartialOrder _A] (_f : _A →ₚ[ℂ] ℂ) := _A
 
-namespace WithFunctional
+namespace GNS
 
 /-- The canonical inclusion of `A` into `WithFunctional A f`. -/
 def toFunctional : A → WithFunctional A f := id
@@ -29,7 +30,7 @@ instance ofFunctionalLinear : LinearMap (RingHom.id ℂ) (WithFunctional A f) A 
   map_smul' _ _ := rfl
 
 /-- `WithFunctional.toFunctional` and `WithFunctional.toFunctional` as an equivalence. -/
-@[simps]
+--@[simps]
 protected def equiv : WithFunctional A f ≃ A where
   toFun := ofFunctional f
   invFun := toFunctional f
@@ -66,7 +67,7 @@ noncomputable def mySesquilinear :
     (WithFunctional A f) →ₗ⋆[ℂ] (WithFunctional A f))
     |>.compr₂ₛₗ (f.comp (ofFunctionalLinear f))
 
-@[simp]
+--@[simp]
 theorem mySesquilinear_apply (x y : (WithFunctional A f)) :
   mySesquilinear f x y = f (star x * y) := rfl
 -- End code from Eric Wieser
@@ -188,8 +189,15 @@ noncomputable instance : UniformSpace (H f) := by unfold H; infer_instance
 instance : CompleteSpace (H f) := by unfold H; infer_instance
 noncomputable instance : NormedAddCommGroup (H f) := by unfold H; infer_instance
 noncomputable instance : InnerProductSpace ℂ (H f) := by unfold H; infer_instance
-instance : HilbertSpace ℂ (H f) where
 
-end WithFunctional
+protected
+instance HilbertSpaceFromFunctional : HilbertSpace ℂ (H f) where
+#check GNS.HilbertSpaceFromFunctional f
+
+def aToMyQuot (a : A) : myQuot f := Submodule.Quotient.mk a
+def myQuotToH (a : myQuot f) : H f := UniformSpace.Completion.coe' a
+def aToH (a : A) : H f := myQuotToH f (aToMyQuot f a)
+
+end GNS
 
 -- To-do: Move on to Aupetit 6.2.19

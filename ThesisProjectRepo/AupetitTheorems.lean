@@ -37,41 +37,54 @@ lemma fOfxStarxHas0Im (x : A) : (f (x * star x)).im = 0 := by
   rw [(aupetit_6_2_15i f (x * star x))] at fstareqfnostar
   apply Complex.conj_eq_iff_im.mp fstareqfnostar
 
-lemma aupetit_6_2_15iilemma (t : ℂ) (ht : t = conj t) (x y : A) (h : f (x * star y) ≠ 0) :
-  0 ≤ f (x * star x) + 2 * t * norm (f (x * star y)) + t^2 * f (y * star y) := by
+lemma fact (x y : A) :
+  f (x * star y) * conj (f (x * star y)) = ↑‖f (x * star y)‖ ^ 2 :=
+  mul_conj' (f (x * star y))
 
-  have fact := mul_conj' (f (x * star y))
-
-  have fact1 : f (y * star x) = conj (f (x * star y)) := calc
+lemma fact1 (x y : A) : f (y * star x) = conj (f (x * star y)) := calc
       f (y * star x) = f (star (x * star y)) := by simp
       _ = conj (f (x * star y)) := aupetit_6_2_15i (f) (x * star y)
 
-  have fact2 := calc
+lemma fact2 (x y : A) (t : ℂ) :
+  t * f (x * star y) / ↑‖f (x * star y)‖ * (starRingEnd ℂ) (f (x * star y))
+    = t * ↑‖f (x * star y)‖ := by
+  calc
       ↑t * f (x * star y) / ↑‖f (x * star y)‖ * (starRingEnd ℂ) (f (x * star y)) =
     ↑t * (f (x * star y) * (starRingEnd ℂ) (f (x * star y))) / ↑‖f (x * star y)‖ := by field_simp
-    _ = t * ↑‖f (x * star y)‖ ^ 2 / ↑‖f (x * star y)‖ := by rw [fact]
+    _ = t * ↑‖f (x * star y)‖ ^ 2 / ↑‖f (x * star y)‖ := by rw [fact f x y]
     _ = ↑t * ↑‖f (x * star y)‖ := by field_simp
 
-  have fact3 := calc
+lemma fact3 (x y : A) (t : ℂ) :
+  t * (starRingEnd ℂ) (f (x * star y)) / ↑‖f (x * star y)‖ * f (x * star y)
+    = t * ↑‖f (x * star y)‖ := calc
       ↑t * (starRingEnd ℂ) (f (x * star y)) / ↑‖f (x * star y)‖ * f (x * star y) =
     ↑t * (f (x * star y) * (starRingEnd ℂ) (f (x * star y))) / ↑‖f (x * star y)‖ := by ring
       _ = t * ↑‖f (x * star y)‖ ^ 2 / ↑‖f (x * star y)‖ := by rw [fact]
       _ =  ↑t * ↑‖f (x * star y)‖  := by field_simp
 
-  have fact4 :
+lemma fact4 (x y : A) (t : ℂ) :
     ↑t * f (x * star y) / ↑‖f (x * star y)‖ *
       (↑t * (starRingEnd ℂ) (f (x * star y)) / ↑‖f (x * star y)‖) * f (y * star y) =
       (↑t^2 * (f (x * star y) * (starRingEnd ℂ) (f (x * star y))))/ ↑‖f (x * star y)‖ ^ 2 *
         f (y * star y) := by field_simp
 
+lemma reEqOwnConj (r : ℝ) : (r : ℂ) = conj (r : ℂ) := by exact Eq.symm (conj_ofReal r)
+
+lemma aupetit_6_2_15iilemma (t : ℂ) (ht : t = conj t) (x y : A) (h : f (x * star y) ≠ 0) :
+  0 ≤ f (x * star x) + 2 * t * norm (f (x * star y)) + t^2 * f (y * star y) := by
   have := aupetit_6_2_15lemma f x y ((t * f (x * star y))/(norm (f (x * star y))))
-  rw [fact1, fact2, ht] at this
-  simp [fact3] at this
-  rw [← ht, fact4, fact] at this
+  rw [fact1 f x y, (fact2 (f) x y t), ht] at this
+  simp [fact3 f x y t] at this
+  rw [← ht, fact4 f x y t, fact] at this
   field_simp at this
   nth_rw 2 [add_assoc] at this
   rwa [← two_mul, ← mul_assoc] at this
 
+lemma aupetit_6_2_15iilemma' (t : ℝ) (x y : A) (h : f (x * star y) ≠ 0) :
+  0 ≤ f (x * star x) + 2 * t * norm (f (x * star y)) + t^2 * f (y * star y) :=
+    aupetit_6_2_15iilemma f t (Eq.symm (conj_ofReal t)) x y h
+
+-- Re-do with Cauchy-Schwarz
 theorem aup_6_2_15ii (x y : A) : norm (f (x * star y)) ^ 2 ≤ f (x * star x) * f (y * star y) := by
   have fxnonneg := PositiveLinearMap.map_nonneg f (mul_star_self_nonneg x)
   have fynonneg := PositiveLinearMap.map_nonneg f (mul_star_self_nonneg y)
@@ -82,28 +95,20 @@ theorem aup_6_2_15ii (x y : A) : norm (f (x * star y)) ^ 2 ≤ f (x * star x) * 
   by_cases fyyzero : f (y * star y) = 0
   · have twoEqConj : 2 = conj (2 : ℂ) := Eq.symm ((fun {z} ↦ conj_eq_iff_re.mpr) rfl)
     by_cases fxzero : f (x * star x) = 0
-    · have halfEqOwnConj : (-1/2 : ℂ) = conj (-1/2 : ℂ) := by
-        rw [map_div₀, map_neg, map_one]
-        congr
-      have l1 := aupetit_6_2_15iilemma (f) (-1/2) halfEqOwnConj x y fzero
-      rw [fxzero, fyyzero] at l1
-      have step : (0 : ℂ) ≤ - norm (f (x * star y)) :=
-        calc (0 : ℂ) ≤ 0 + 2 * (- 1 / 2) * ↑‖f (x * star y)‖ + (- 1 / 2) ^ 2 * 0 := l1
-          _ = - ↑‖f (x * star y)‖ := by norm_num
-
-      have normLeq0 : (norm (f (x * star y)) : ℂ) ≤ 0 := neg_nonneg.mp step
+    · have normLeq0 := aupetit_6_2_15iilemma' (f) (-1/2) x y fzero
+      rw [ofReal_div, ofReal_neg, ofReal_one, ofReal_ofNat, fxzero, fyyzero, zero_add,
+        mul_zero, add_zero] at normLeq0
+      norm_num at normLeq0
       have normGeq0 : 0 ≤ (norm (f (x * star y)) : ℂ) := by
         norm_cast; exact norm_nonneg (f (x * star y))
       have norm0 : 0 = (norm (f (x * star y)) : ℂ) := le_antisymm normGeq0 normLeq0
       simp [fxzero, fyyzero, ← norm0]
     let c := (2 * f (x * star x))/(-2 * norm (f (x * star y)))
-    have fxx := fxx_eq_conj f x
-    have fxxEqConj: f (x * star x)  = conj (f (x * star x)) := Eq.symm fxx
     have constEqOwnConj : c = conj c := by
       dsimp [c]
       rw [neg_mul, map_div₀]
       norm_cast
-      rw [conj_ofReal, map_mul (starRingEnd ℂ), ← fxxEqConj, ← twoEqConj]
+      rw [conj_ofReal, map_mul (starRingEnd ℂ), fxx_eq_conj f x, ← twoEqConj]
     have h := aupetit_6_2_15iilemma (f) c constEqOwnConj x y fzero
     rw [fyyzero, mul_zero, add_zero] at h
     dsimp [c] at h
@@ -112,12 +117,10 @@ theorem aup_6_2_15ii (x y : A) : norm (f (x * star y)) ^ 2 ≤ f (x * star x) * 
     have fxneg : f (x * star x) < 0 := lt_of_le_of_ne h fxzero
     linarith only [fxneg, fxnonneg]
 
-  have fyyIm0: (f (y * star y)).im  = 0 := fOfxStarxHas0Im f y
-
   have invIm0 : ((f (y * star y))⁻¹).im = 0 := by
     rw [inv_im, div_eq_zero_iff, neg_eq_zero, map_eq_zero]
     left
-    exact fyyIm0
+    exact fOfxStarxHas0Im f y
 
   have fullProdIm0 := Complex.smul_im (-‖f (x * star y)‖) (f (y * star y))⁻¹
   rw [invIm0, MulActionWithZero.smul_zero (-‖f (x * star y)‖)] at fullProdIm0
