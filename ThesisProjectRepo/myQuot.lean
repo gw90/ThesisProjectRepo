@@ -23,6 +23,8 @@ instance [NonUnitalNonAssocSemiring A] :
   NonUnitalNonAssocSemiring (WithFunctional A f) := ‹NonUnitalNonAssocSemiring A›
 instance [Semiring ℂ] [AddCommGroup A] [Module ℂ A] :
   Module ℂ (WithFunctional A f) := ‹Module ℂ (WithFunctional A f)›
+instance : NonUnitalSeminormedRing (WithFunctional A f) := by unfold WithFunctional; infer_instance
+instance : CStarAlgebra (WithFunctional A f) := by unfold WithFunctional; infer_instance
 
 instance ofFunctionalLinear : LinearMap (RingHom.id ℂ) (WithFunctional A f) A where
   toFun := ofFunctional f
@@ -178,10 +180,12 @@ noncomputable instance myInnerProductSpace : InnerProductSpace.Core ℂ (myQuot 
       apply (Submodule.Quotient.mk_eq_zero (N f) (x := a)).mpr
       assumption
 
+
 noncomputable instance : NormedAddCommGroup (myQuot f) :=
   InnerProductSpace.Core.toNormedAddCommGroup (cd := myInnerProductSpace f)
 noncomputable instance : InnerProductSpace ℂ (myQuot f) :=
-  InnerProductSpace.ofCore (myInnerProductSpace f)
+  InnerProductSpace.ofCore (myInnerProductSpace f).toCore
+noncomputable instance : NormedSpace ℂ (myQuot f) := by infer_instance
 
 def H := UniformSpace.Completion (myQuot f)
 
@@ -189,9 +193,11 @@ noncomputable instance : UniformSpace (H f) := by unfold H; infer_instance
 instance : CompleteSpace (H f) := by unfold H; infer_instance
 noncomputable instance : NormedAddCommGroup (H f) := by unfold H; infer_instance
 noncomputable instance : InnerProductSpace ℂ (H f) := by unfold H; infer_instance
+-- or UniformSpace.Completion.innerProductSpace (E := myQuot f) (𝕜 := ℂ)
 
 protected
 instance HilbertSpaceFromFunctional : HilbertSpace ℂ (H f) where
+
 #check GNS.HilbertSpaceFromFunctional f
 
 def aToMyQuot (a : A) : myQuot f := Submodule.Quotient.mk a
@@ -199,5 +205,3 @@ def myQuotToH (a : myQuot f) : H f := UniformSpace.Completion.coe' a
 def aToH (a : A) : H f := myQuotToH f (aToMyQuot f a)
 
 end GNS
-
--- To-do: Move on to Aupetit 6.2.19
