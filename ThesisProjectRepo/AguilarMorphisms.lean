@@ -5,6 +5,7 @@ import Mathlib.Analysis.InnerProductSpace.Adjoint
 import Mathlib.Analysis.Normed.Operator.Mul
 import Mathlib.Topology.Continuous
 import Mathlib.Topology.Algebra.Monoid.Defs
+import Mathlib.Analysis.InnerProductSpace.Adjoint
 
 open ComplexConjugate
 open scoped ComplexOrder
@@ -89,9 +90,6 @@ instance (b : A) : ContinuousLinearMap (σ := RingHom.id ℂ) (M := A) (M₂ := 
 
 @[simp]
 lemma g_apply (b : WithFunctional A f) (x : WithFunctional A f) : f (star b * x * b) = (g f b) x := by rfl
-
--- Note: PositiveLinearMap.instContinuousLinearMapClassComplexOfLinearMapClassOfOrderHomClass
--- should give continuity of g so we can use operator norm properties
 
 variable (a : WithFunctional A f)
 
@@ -186,39 +184,6 @@ lemma π_onCompletion_onQuot_equiv (b : myQuot f) :
   Completion.map ⇑(π_onQuot f a) ↑b = (π_onQuot f a) b := by
     simp [map_coe (ContinuousLinearMap.uniformContinuous (π_onQuot f a))]
 
-/-
-Steps:
-1. Extend π f a to a continuous function on H f
-2. Prove that it is still linear
-   Use fact of agreeing on dense set, combined with continuity
-3. Prove π (not π(a)) is also linear
-3. Prove multiplicativity
-4. Prove *-preserving
--/
-
-/-
-To-dos:
-1. figure out how to deal with the completion thing
-   i.e. how to consider a representative from myQuot f
--/
-
-#check H f
-#check UniformSpace.Completion.induction_on
-
---agreement of continuous functions on myQuot f implies equality on H f
-#check UniformSpace.Completion.ext
--- same as above, but you specify space explicitly
-#check UniformSpace.Completion.ext'
--- if two functions are equal regardless of wether you move them to the completion
--- before or after applying the function, then they are equal
--- probably not useful
-#check UniformSpace.Completion.map_unique
-
---Extend a linear equivalence between normed spaces to a continuous linear equivalence
--- between Banach spaces with two dense maps e₁ and e₂ and the corresponding norm estimates.
--- #check LinearEquiv.extend
--- I might not have a LinearEquiv
-
 noncomputable
 def π_LinContWithA (a : WithFunctional A f) : H f →L[ℂ] H f where
   toFun := UniformSpace.Completion.map (π_onQuot f a)
@@ -258,10 +223,10 @@ def π_LinContWithA (a : WithFunctional A f) : H f →L[ℂ] H f where
     simp[π_onCompletion_onQuot_equiv]
   cont := UniformSpace.Completion.continuous_map (f := (π_onQuot f a))
 
-variable [CStarAlgebra (H f →L[ℂ] H f)] -- maybe this does what I want?
+--
 -- from here, follow Aguilar p. 253
 noncomputable
-def π : A →L[ℂ] (H f →L[ℂ] H f) where
+def π : A →ₗ[ℂ] (H f →L[ℂ] H f) where
   toFun := π_LinContWithA f
   map_add' x y := by
     ext c
@@ -300,23 +265,61 @@ def π : A →L[ℂ] (H f →L[ℂ] H f) where
     simp only [Submodule.mapQ_apply, ContinuousLinearMap.coe_coe]
     dsimp [AWithToAWithLinCont]
     simp only [Algebra.smul_mul_assoc, Submodule.Quotient.mk_smul, Completion.coe_smul]
+
+-- I will need to prove continuity, and use Aupetit's boundedness proof
+/-
+lemma π_cont : Continuous (π f) := by sorry
+
   cont := by
-    -- prove bounded?
-    -- Aupetit states that the bounding constant should be 1
-    
+    -- we have to maybe pass it a parameter and prove boundedness
+    have bound_on_πf_exists :
+      ∃ C, ∀ (a : A), ‖π a‖ ≤ C * ‖a‖ :=
+      LinearMap.bound_of_ball_bound
+        (r := 1) (Real.zero_lt_one) (norm a) (π a) (boundedUnitBall f a)
+
     sorry
+-/
 
 -- I think I probably need to specify some more structure on H f →L[ℂ] H f
 lemma π_unital : π f (1 : A) = (1 : H f →L[ℂ] H f) := by
   ext b
   rw [ContinuousLinearMap.one_apply] -- 1 is definitely the identity
-  sorry
+  dsimp [π]
+  refine induction_on b
+      (isClosed_eq ((ContinuousLinearMap.continuous (π_LinContWithA f (1))))
+        (continuous_id))
+      ?_
+  intro a
+  dsimp [π_LinContWithA]
+  simp [π_onCompletion_onQuot_equiv]
+  congr
+  dsimp [π_onQuot]
+  -- induction and then πa_apply
+  induction a using Submodule.Quotient.induction_on with | _ a
+  simp [πa_apply]
+
+-- variable [CStarAlgebra (H f →L[ℂ] H f)] -- maybe this does what I want?
 
 lemma π_mult (a b : WithFunctional A f) : π f (a * b) = (π f a) * (π f b) := by
-  sorry
+  ext c
+  simp only [ContinuousLinearMap.coe_mul, Function.comp_apply]
+  dsimp [π]
+  refine induction_on c
+      (isClosed_eq ((ContinuousLinearMap.continuous (π_LinContWithA f (a * b))))
+        (ContinuousLinearMap.continuous ((π_LinContWithA f (a)).comp (π_LinContWithA f (b)))))
+      ?_
+  intro d
+  dsimp [π_LinContWithA]
+  simp [π_onCompletion_onQuot_equiv]
+  dsimp [π_onQuot]
+  -- induction and then πa_apply
+  induction d using Submodule.Quotient.induction_on with | _ d
+  simp [πa_apply]
+  rw [mul_assoc]
 
 -- how do I know that the below statemnt is using the correct adjoint in B(H_f)?
 lemma π_star_preserving (a : WithFunctional A f) : π f (star a) = star (π f a) := by
+
   sorry
 
 noncomputable
@@ -324,7 +327,7 @@ instance : StarAlgHom ℂ (WithFunctional A f) (H f →L[ℂ] H f) where
   toFun := π f
   map_one' := π_unital f
   map_mul' := π_mult f
-  map_zero' := ContinuousLinearMap.map_zero (π f)
-  map_add' := ContinuousLinearMap.map_add (π f)
+  map_zero' := LinearMap.map_zero (π f)
+  map_add' := LinearMap.map_add (π f)
   commutes' r := sorry
   map_star' := π_star_preserving f
