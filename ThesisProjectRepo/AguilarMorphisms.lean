@@ -317,10 +317,31 @@ lemma π_mult (a b : WithFunctional A f) : π f (a * b) = (π f a) * (π f b) :=
   simp [πa_apply]
   rw [mul_assoc]
 
--- how do I know that the below statemnt is using the correct adjoint in B(H_f)?
+-- how do I know that the below statement is using the correct adjoint in B(H_f)?
 lemma π_star_preserving (a : WithFunctional A f) : π f (star a) = star (π f a) := by
-
+  -- this is a much less trivial proof
   sorry
+
+lemma π_smul (r : ℂ) :
+  (π f) ((algebraMap ℂ (WithFunctional A f)) r) = (algebraMap ℂ (H f →L[ℂ] H f)) r := by
+  ext b
+  simp only [ContinuousLinearMap.algebraMap_apply]
+  rw [← RingHom.smulOneHom_eq_algebraMap]
+  rw [RingHom.smulOneHom_apply r]
+  simp
+  congr
+  dsimp [π, π_LinContWithA]
+  refine induction_on b
+    (isClosed_eq ((ContinuousLinearMap.continuous (π_LinContWithA f (1))))
+      (continuous_id))
+    ?_
+  intro c
+  simp [π_onCompletion_onQuot_equiv]
+  congr
+  dsimp [π_onQuot]
+  -- induction and then πa_apply
+  induction c using Submodule.Quotient.induction_on with | _ c
+  simp [πa_apply]
 
 noncomputable
 instance : StarAlgHom ℂ (WithFunctional A f) (H f →L[ℂ] H f) where
@@ -329,5 +350,5 @@ instance : StarAlgHom ℂ (WithFunctional A f) (H f →L[ℂ] H f) where
   map_mul' := π_mult f
   map_zero' := LinearMap.map_zero (π f)
   map_add' := LinearMap.map_add (π f)
-  commutes' r := sorry
+  commutes' := π_smul f
   map_star' := π_star_preserving f
