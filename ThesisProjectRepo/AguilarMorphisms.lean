@@ -6,6 +6,7 @@ import Mathlib.Analysis.Normed.Operator.Mul
 import Mathlib.Topology.Continuous
 import Mathlib.Topology.Algebra.Monoid.Defs
 import Mathlib.Analysis.InnerProductSpace.Adjoint
+import Mathlib.Analysis.InnerProductSpace.Continuous
 
 open ComplexConjugate
 open scoped ComplexOrder
@@ -267,9 +268,8 @@ def π : A →ₗ[ℂ] (H f →L[ℂ] H f) where
     simp only [Algebra.smul_mul_assoc, Submodule.Quotient.mk_smul, Completion.coe_smul]
 
 -- I will need to prove continuity, and use Aupetit's boundedness proof
-/-
 lemma π_cont : Continuous (π f) := by sorry
-
+/-
   cont := by
     -- we have to maybe pass it a parameter and prove boundedness
     have bound_on_πf_exists :
@@ -317,10 +317,41 @@ lemma π_mult (a b : WithFunctional A f) : π f (a * b) = (π f a) * (π f b) :=
   simp [πa_apply]
   rw [mul_assoc]
 
--- how do I know that the below statement is using the correct adjoint in B(H_f)?
+--rw [← ContinuousLinearMap.adjoint_inner_left (π f a)]
+open ContinuousLinearMap -- this mean adjoint = star
 lemma π_star_preserving (a : WithFunctional A f) : π f (star a) = star (π f a) := by
-  -- this is a much less trivial proof
-  sorry
+  refine (ContinuousLinearMap.eq_adjoint_iff (π f (star a)) (π f a)).mpr ?_
+  intro x y
+  refine induction_on x
+    (isClosed_eq
+      (Continuous.inner
+        (ContinuousLinearMap.continuous (((π f) (star a)))) (continuous_const (y := y)))
+      (Continuous.inner (continuous_id) (continuous_const (y := (π f a) y))))
+      ?_
+  intro x
+  refine induction_on y
+    (isClosed_eq
+      (Continuous.inner (continuous_const (y := (((π f) (star a)) (coe' x)))) (continuous_id))
+      (Continuous.inner
+        (continuous_const (y := coe' x))
+        (ContinuousLinearMap.continuous (((π f) a)))))
+      ?_
+  intro y
+  dsimp [π]
+  dsimp [π_LinContWithA]
+  simp [π_onCompletion_onQuot_equiv]
+  dsimp [π_onQuot]
+  induction x using Submodule.Quotient.induction_on with | _ x
+  induction y using Submodule.Quotient.induction_on with | _ y
+  simp [πa_apply]
+  have (a b : myQuot f) : inner ℂ (coe' a) (coe' b) = myInner f a b := by
+    simp only [inner_coe]
+    rfl
+  rw [this, this]
+  dsimp [myInner, myHalfSQ, myHalf, mySesquilinear]
+  simp
+  congr 2
+  rw [mul_assoc]
 
 lemma π_smul (r : ℂ) :
   (π f) ((algebraMap ℂ (WithFunctional A f)) r) = (algebraMap ℂ (H f →L[ℂ] H f)) r := by
