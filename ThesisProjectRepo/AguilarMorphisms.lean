@@ -88,17 +88,16 @@ lemma g_apply (b : WithFunctional A f) (x : WithFunctional A f) : f (star b * x 
 -- should give continuity of g so we can use operator norm properties
 
 noncomputable
-def π (a : WithFunctional A f) : (myQuot f) →ₗ[ℂ] (myQuot f) where
+def π_nonCont (a : WithFunctional A f) : (myQuot f) →ₗ[ℂ] (myQuot f) where
   toFun := Submodule.mapQ (GNS.N f) (GNS.N f) (AWithToAWithLin f a) (helper f a)
   map_add' := by simp
   map_smul' := by simp
 
-variable (a : WithFunctional A f)
+lemma πa_apply (a : WithFunctional A f) (b : WithFunctional A f) :
+  (π_nonCont f a) (Submodule.Quotient.mk b) = Submodule.Quotient.mk (a * b) := by rfl
 
-@[simp]
-lemma πa_apply (b : WithFunctional A f) : (π f a) (Submodule.Quotient.mk b) = Submodule.Quotient.mk (a * b) := by rfl
-
-lemma boundedUnitBall : (∀ z ∈ Metric.ball 0 1, ‖(π f a) z‖ ≤ ‖a‖) := by
+lemma boundedUnitBall (a : WithFunctional A f) :
+  (∀ z ∈ Metric.ball 0 1, ‖(π_nonCont f a) z‖ ≤ ‖a‖) := by
   intro b bh
   rw [Metric.mem_ball, dist_zero_right] at bh
   -- This can be cleaned up alot
@@ -115,7 +114,8 @@ lemma boundedUnitBall : (∀ z ∈ Metric.ball 0 1, ‖(π f a) z‖ ≤ ‖a‖
   change ‖aToMyQuot f (a * b)‖ ≤ ‖a‖
   rw [show
       ‖aToMyQuot f (a * b)‖ =
-        √(RCLike.re ((myInnerProductSpace f).inner (Submodule.Quotient.mk (a * b)) (Submodule.Quotient.mk (a * b))))
+        √(RCLike.re ((myInnerProductSpace f).inner
+          (Submodule.Quotient.mk (a * b)) (Submodule.Quotient.mk (a * b))))
       from rfl]
   simp
   rw [← mul_assoc]
@@ -153,153 +153,23 @@ lemma boundedUnitBall : (∀ z ∈ Metric.ball 0 1, ‖(π f a) z‖ ≤ ‖a‖
   have abs_a_pos : 0 ≤ ‖a‖ := by exact norm_nonneg a
   exact (Real.sqrt_le_left abs_a_pos).mpr step4
 
-#check LinearMap.bound_of_ball_bound (r := 1) (Real.zero_lt_one) (norm a) (π f a) (boundedUnitBall f a)
+lemma bound_on_π_exists (a : WithFunctional A f) :
+  ∃ C, ∀ (z : myQuot f), ‖(π_nonCont f a) z‖ ≤ C * ‖z‖ :=
+  LinearMap.bound_of_ball_bound
+    (r := 1) (Real.zero_lt_one) (norm a) (π_nonCont f a) (boundedUnitBall f a)
 
-
-
-/-
-
-  cont := by
-    -- Now, we show that π f (a) is continuous on A/Nf
-    -- resume proof later. How do I do this in Lean???
-    -- I AM SHOWING BOUNDEDNESS ON THE UNIT BALL WITH THE OPERATOR NORM!!!
-    have : ∃ b : (WithFunctional A f), norm (aToMyQuot f b) ≤ 1 := by
-      use 0
-      unfold aToMyQuot
-      simp
-    obtain ⟨b, hb⟩ := this
-    have :=
-      InnerProductSpace.Core.ofReal_normSq_eq_inner_self (aToMyQuot f b) (𝕜 := ℂ) (F := myQuot f)
-    have h1 : inner ℂ (aToMyQuot f b) (aToMyQuot f b) = f (star b * b) := rfl
-    rw [h1] at this
-    have norm_eq_sqrt :=
-      InnerProductSpace.Core.norm_eq_sqrt_re_inner (aToMyQuot f b) (𝕜 := ℂ) (F := myQuot f)
-    simp at norm_eq_sqrt
-    rw [h1] at norm_eq_sqrt
-    -- use
-    #check LinearMap.bound_of_ball_bound (r := 1) (r_pos := by norm_num)
-    -- to get a bound from boundedness on the unit ball
-    -- to-do: prove boundedness on unit ball
-
-    -- norm_eq_sqrt is now the first equation on p.252
-    -- now we should approach the second equation with the chain of calcs
-    -- to-do: imply the boundedness we need from constant bound on unit ball
-    #check LinearMap.mkContinuous
-
-
-
-    #check PositiveLinearMap.norm_apply_le_of_nonneg
-    sorry
--- linear, but not continuous
--- WE MUST prove continuity by bound - all sources agree. DO THIS!!!
--- linear + bounded -> continuous
--- Aguilar invokes theorem similar to PositiveLinearMap.norm_apply_le_of_nonneg
--/
-
-
-
-/-
-
+-- maybe later try to make a specific bound so that it can be computable
 noncomputable
-def HtoHCont (a : WithFunctional A f) : (GNS.H f) →L[ℂ] (GNS.H f) where
-  toFun := UniformSpace.Completion.map (myQuotToMyQuotLin f a)
-  map_add' x y := by
-    sorry
-  map_smul' := by sorry
-  cont := UniformSpace.Completion.continuous_map (f := myQuotToMyQuotLin f a)
+def π (a : WithFunctional A f) : (myQuot f) →L[ℂ] (myQuot f) :=
+  LinearMap.mkContinuousOfExistsBound (π_nonCont f a) (bound_on_π_exists f a)
 
-variable (a : A)
-#check HtoHCont f a
-#check UniformSpace.Completion.map ⇑(myQuotToMyQuotLin f a)
-#check UniformSpace.Completion.continuous_map (f := myQuotToMyQuotLin f a)
-#check ContinuousLinearMap.extend (myQuotToMyQuotLin f a)
+lemma π_nonCont_eq_π (a : WithFunctional A f) :
+  (π f a) = (π_nonCont f a) := by dsimp [π]
 
--- once continuiuty is proven, can we extend to completion?
-/-
-instance : PartialOrder (myQuot f) := by unfold myQuot; unfold WithFunctional;
+lemma π_nonCont_eq_π_on_input (a : WithFunctional A f) (b : myQuot f) :
+  (π f a) b = (π_nonCont f a) b := by dsimp [π]
 
-noncomputable
-def myQuotToMyQuotLinPos (a : WithFunctional A f) : (myQuot f) →ₚ[ℂ] (myQuot f) where
-  toFun := Submodule.mapQ (GNS.N f) (GNS.N f) (AWithToAWithLin f a) (helper f a)
-  map_add' := by simp
-  map_smul' := by simp
--/
--- positivty will not work
-theorem bound (a : A) : (∀ (x : myQuot f), ‖(myQuotToMyQuotLin f a) x‖ ≤ 1 * ‖x‖) := by
-  intro x
-  have h := aupetit_6_2_15iiia f
-  -- we want to have f(x^*x)≤ f(1)∣x∣^2
-  -- I think this requires using the definition of the norm, then the inner product
-  -- work it out on a whiteboard
-  sorry
-
-#check bound f a
-#check LinearMap.mkContinuous (myQuotToMyQuotLin f a) 1 (bound f a)-- linear map and a bound gives a coutinous linear map
-#check myQuotToMyQuotLin f a
-#check PositiveLinearMap.exists_norm_apply_le (myQuotToMyQuotLin f a) -- need to prove positivity, which requires partial order
-
-
-#check NonUnitalAlgHom.Lmul ℂ A -- this could be exactly what I need
-#check ContinuousLinearMap.mulₗᵢ
-
-
-/-
-Alternate method: use NonUnitalAlgHom.Lmul ℂ (myQuot f)
-This method might technically be better, but try it later because it is less
-similar to what the books do
--/
-
---#check NonUnitalAlgHom.Lmul ℂ (myQuot f)
-
-/-
-
--- π_f (a) (b + N_f) = ab + N_f
--- π_f (a) : myQuot → myQuot
-
--- 1. get a linear map from A to A
--- 2. get a linear map from myQuot to myQuot
--- 3. Prove that that map is continuous
--- 4. Extend it to the completion with ContinuousLinearMap.extend
-
--- step 1
--- step 4
---#check ContinuousLinearMap.extend (ContQuotToQuotLinContMul f a) (F := GNS.H f) (𝕜 := ℂ)
--- this raises the domain, so we have to raise the codomain first
-
--- step 1: underlying multiplication is continuous
-#check ContinuousLinearMap.mul ℂ A -- gives multiplication over is continuous linear
-
-noncomputable
-instance AtoALinContMul (a : A) : A →L[ℂ] A := (ContinuousLinearMap.mul ℂ A) a
-
-variable (a : WithFunctional A f)
-#check (ContinuousLinearMap.mul ℂ (WithFunctional A f)) a
-
-noncomputable
-def AWithToAWithLinContMul (a : WithFunctional A f) := (ContinuousLinearMap.mul ℂ (WithFunctional A f)) a
-#check AWithToAWithLinContMul
-
---This is dubious: really think about it
---#check ContinuousLinearMap.mul ℂ (GNS.H f)
-
--- state that the multiplication on the quotient space is continuous linear
--- now we send the continuous linear map to a quotient space. I think I can compose with a continuous linear quotient map
--- alternatively, what's the minimum math I need to get the bound?
-
--- I think this can be defined, but depends on some stuff that involves the proof that the quotient is well-defined
--- and we need to us the weird quotient induction thing
---noncomputable
---instance : SeminormedRing (myQuot f) where
-
-#check NonUnitalAlgHom.Lmul ℂ A -- this could be exactly what I need
---#check NonUnitalAlgHom.Lmul ℂ (myQuot f) -- this would be almost exactly what I need
-#check ContinuousLinearMap.mulₗᵢ
-
-#check UniformSpace.Completion.continuous_map
-
--- Mathlib.Analysis.Normed.Operator.ContinuousLinearMap has bounded implies continuous
--- useful if following Aupetit
-
--- maybe all I need to construct is a linear map
-#check LinearMap.mkContinuous -- linear map and a bound gives a coutinous linear map
--/
+@[simp]
+lemma π_apply_on_quot (a : WithFunctional A f) (b : WithFunctional A f) :
+  ((π f a) (Submodule.Quotient.mk b)) = Submodule.Quotient.mk (a * b) := by
+    rw [π_nonCont_eq_π_on_input f a (Submodule.Quotient.mk b), πa_apply]
