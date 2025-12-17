@@ -259,13 +259,52 @@ def π_LinContWithA (a : WithFunctional A f) : H f →L[ℂ] H f where
   cont := UniformSpace.Completion.continuous_map (f := (π_onQuot f a))
 
 variable [CStarAlgebra (H f →L[ℂ] H f)] -- maybe this does what I want?
-
+-- from here, follow Aguilar p. 253
 noncomputable
 def π : A →L[ℂ] (H f →L[ℂ] H f) where
   toFun := π_LinContWithA f
-  map_add' := sorry
-  map_smul' := sorry
-  cont := sorry
+  map_add' x y := by
+    ext c
+    rw [ContinuousLinearMap.add_apply]
+    refine induction_on c
+      (isClosed_eq (ContinuousLinearMap.continuous (f := π_LinContWithA f (x+y)))
+        (continuous_id.comp (
+          Continuous.add
+            (ContinuousLinearMap.continuous (π_LinContWithA f x))
+            (ContinuousLinearMap.continuous (π_LinContWithA f y)))))
+      ?_
+    intro b
+    dsimp [π_LinContWithA]
+    simp [π_onCompletion_onQuot_equiv, π_nonCont_eq_π_on_input]
+    dsimp [π_nonCont]
+    dsimp [AWithToAWithLin]
+    induction b using Submodule.Quotient.induction_on with | _ b
+    simp only [Submodule.mapQ_apply, ContinuousLinearMap.coe_coe]
+    dsimp [AWithToAWithLinCont]
+    rw [← coe_add, ← Submodule.Quotient.mk_add, ← add_mul]
+  map_smul' c x := by
+    simp only [RingHom.id_apply]
+    ext y
+    refine induction_on y
+      (isClosed_eq ((ContinuousLinearMap.continuous (π_LinContWithA f (c • x))))
+        (continuous_id.comp (Continuous.smul
+          (continuous_const (y := c))
+          (ContinuousLinearMap.continuous (π_LinContWithA f x)))))
+      ?_
+    intro b
+    dsimp [π_LinContWithA]
+    simp [π_onCompletion_onQuot_equiv, π_nonCont_eq_π_on_input]
+    dsimp [π_nonCont]
+    dsimp [AWithToAWithLin]
+    induction b using Submodule.Quotient.induction_on with | _ b
+    simp only [Submodule.mapQ_apply, ContinuousLinearMap.coe_coe]
+    dsimp [AWithToAWithLinCont]
+    simp only [Algebra.smul_mul_assoc, Submodule.Quotient.mk_smul, Completion.coe_smul]
+  cont := by
+    -- prove bounded?
+    -- Aupetit states that the bounding constant should be 1
+    
+    sorry
 
 -- I think I probably need to specify some more structure on H f →L[ℂ] H f
 lemma π_unital : π f (1 : A) = (1 : H f →L[ℂ] H f) := by
