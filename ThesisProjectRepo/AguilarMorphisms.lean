@@ -160,16 +160,53 @@ lemma bound_on_π_exists (a : WithFunctional A f) :
 
 -- maybe later try to make a specific bound so that it can be computable
 noncomputable
-def π (a : WithFunctional A f) : (myQuot f) →L[ℂ] (myQuot f) :=
+def π_onQuot (a : WithFunctional A f) : (myQuot f) →L[ℂ] (myQuot f) :=
   LinearMap.mkContinuousOfExistsBound (π_nonCont f a) (bound_on_π_exists f a)
 
 lemma π_nonCont_eq_π (a : WithFunctional A f) :
-  (π f a) = (π_nonCont f a) := by dsimp [π]
+  (π_onQuot f a) = (π_nonCont f a) := by dsimp [π_onQuot]
 
 lemma π_nonCont_eq_π_on_input (a : WithFunctional A f) (b : myQuot f) :
-  (π f a) b = (π_nonCont f a) b := by dsimp [π]
+  (π_onQuot f a) b = (π_nonCont f a) b := by dsimp [π_onQuot]
 
 @[simp]
 lemma π_apply_on_quot (a : WithFunctional A f) (b : WithFunctional A f) :
-  ((π f a) (Submodule.Quotient.mk b)) = Submodule.Quotient.mk (a * b) := by
+  ((π_onQuot f a) (Submodule.Quotient.mk b)) = Submodule.Quotient.mk (a * b) := by
     rw [π_nonCont_eq_π_on_input f a (Submodule.Quotient.mk b), πa_apply]
+
+/-
+Steps:
+1. Extend π f a to a continuous function on H f
+2. Prove that it is still linear
+   Use fact of agreeing on dense set, combined with continuity
+3. Prove π (not π(a)) is also linear
+3. Prove multiplicativity
+4. Prove *-preserving
+-/
+
+noncomputable
+def π_LinContWithA (a : WithFunctional A f) : H f →L[ℂ] H f where
+  toFun := UniformSpace.Completion.map (π_onQuot f a)
+  map_add' := by sorry
+  map_smul' := sorry
+  cont := UniformSpace.Completion.continuous_map (f := (π_onQuot f a))
+
+variable [CStarAlgebra (H f →L[ℂ] H f)] -- maybe this does what I want?
+
+noncomputable
+def π : A →L[ℂ] (H f →L[ℂ] H f) where
+  toFun := π_LinContWithA f
+  map_add' := sorry
+  map_smul' := sorry
+  cont := sorry
+
+-- how do I know that 1 is the identity?
+-- I think I probably need to specify some more structure on H f →L[ℂ] H f
+lemma π_unital : π f (1 : A) = (1 : H f →L[ℂ] H f) := by sorry
+
+lemma π_mult (a b : WithFunctional A f) : π f (a * b) = (π f a) * (π f b) := by
+  sorry
+
+-- how do I know that the below statemnt is using the correct adjoint in B(H_f)?
+lemma π_star_preserving (a : WithFunctional A f) : π f (star a) = star (π f a) := by
+  sorry
