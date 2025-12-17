@@ -93,16 +93,18 @@ lemma g_apply (b : WithFunctional A f) (x : WithFunctional A f) : f (star b * x 
 -- Note: PositiveLinearMap.instContinuousLinearMapClassComplexOfLinearMapClassOfOrderHomClass
 -- should give continuity of g so we can use operator norm properties
 
+variable (a : WithFunctional A f)
+
 noncomputable
-def π_nonCont (a : WithFunctional A f) : (myQuot f) →ₗ[ℂ] (myQuot f) where
+def π_nonCont : (myQuot f) →ₗ[ℂ] (myQuot f) where
   toFun := Submodule.mapQ (GNS.N f) (GNS.N f) (AWithToAWithLin f a) (helper f a)
   map_add' := by simp
   map_smul' := by simp
 
-lemma πa_apply (a : WithFunctional A f) (b : WithFunctional A f) :
+lemma πa_apply (b : WithFunctional A f) :
   (π_nonCont f a) (Submodule.Quotient.mk b) = Submodule.Quotient.mk (a * b) := by rfl
 
-lemma boundedUnitBall (a : WithFunctional A f) :
+lemma boundedUnitBall :
   (∀ z ∈ Metric.ball 0 1, ‖(π_nonCont f a) z‖ ≤ ‖a‖) := by
   intro b bh
   rw [Metric.mem_ball, dist_zero_right] at bh
@@ -159,29 +161,30 @@ lemma boundedUnitBall (a : WithFunctional A f) :
   have abs_a_pos : 0 ≤ ‖a‖ := by exact norm_nonneg a
   exact (Real.sqrt_le_left abs_a_pos).mpr step4
 
-lemma bound_on_π_exists (a : WithFunctional A f) :
+lemma bound_on_π_exists :
   ∃ C, ∀ (z : myQuot f), ‖(π_nonCont f a) z‖ ≤ C * ‖z‖ :=
   LinearMap.bound_of_ball_bound
     (r := 1) (Real.zero_lt_one) (norm a) (π_nonCont f a) (boundedUnitBall f a)
 
 -- maybe later try to make a specific bound so that it can be computable
 noncomputable
-def π_onQuot (a : WithFunctional A f) : (myQuot f) →L[ℂ] (myQuot f) :=
+def π_onQuot : (myQuot f) →L[ℂ] (myQuot f) :=
   LinearMap.mkContinuousOfExistsBound (π_nonCont f a) (bound_on_π_exists f a)
 
-lemma π_nonCont_eq_π (a : WithFunctional A f) :
+lemma π_nonCont_eq_π :
   (π_onQuot f a) = (π_nonCont f a) := by dsimp [π_onQuot]
 
-lemma π_nonCont_eq_π_on_input (a : WithFunctional A f) (b : myQuot f) :
+lemma π_nonCont_eq_π_on_input (b : myQuot f) :
   (π_onQuot f a) b = (π_nonCont f a) b := by dsimp [π_onQuot]
 
-lemma π_nonCont_eq_π_on_input' (a : WithFunctional A f) (b : myQuot f) :
-  (π_onQuot f a) (coe' b) = (π_nonCont f a) b := by dsimp [π_onQuot]
-
 @[simp]
-lemma π_apply_on_quot (a : WithFunctional A f) (b : WithFunctional A f) :
+lemma π_apply_on_quot (b : WithFunctional A f) :
   ((π_onQuot f a) (Submodule.Quotient.mk b)) = Submodule.Quotient.mk (a * b) := by
     rw [π_nonCont_eq_π_on_input f a (Submodule.Quotient.mk b), πa_apply]
+
+lemma π_onCompletion_onQuot_equiv (b : myQuot f) :
+  Completion.map ⇑(π_onQuot f a) ↑b = (π_onQuot f a) b := by
+    simp [map_coe (ContinuousLinearMap.uniformContinuous (π_onQuot f a))]
 
 /-
 Steps:
@@ -235,8 +238,10 @@ def π_LinContWithA (a : WithFunctional A f) : H f →L[ℂ] H f where
           (continuous_map (f := (⇑(π_onQuot f a)))))))
       ?_
     intro c
-
-    sorry
+    have : (b : Completion (myQuot f)) + ↑c = ↑(b + c) := by exact Eq.symm (coe_add b c)
+    rw [this]
+    simp [π_onCompletion_onQuot_equiv]
+    rw [coe_add]
   map_smul' := sorry
   cont := UniformSpace.Completion.continuous_map (f := (π_onQuot f a))
 
