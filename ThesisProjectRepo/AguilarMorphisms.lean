@@ -3,10 +3,16 @@ import Mathlib.Analysis.VonNeumannAlgebra.Basic
 import Mathlib.Analysis.Normed.Operator.Extend
 import Mathlib.Analysis.InnerProductSpace.Adjoint
 import Mathlib.Analysis.Normed.Operator.Mul
+import Mathlib.Topology.Continuous
+import Mathlib.Topology.Algebra.Monoid.Defs
 
 open ComplexConjugate
 open scoped ComplexOrder
 open Complex
+
+open UniformSpace
+open SeparationQuotient
+open UniformSpace.Completion
 
 variable {A : Type*} [CStarAlgebra A] [PartialOrder A] [StarOrderedRing A]
 variable (f : A →ₚ[ℂ] ℂ)
@@ -169,6 +175,9 @@ lemma π_nonCont_eq_π (a : WithFunctional A f) :
 lemma π_nonCont_eq_π_on_input (a : WithFunctional A f) (b : myQuot f) :
   (π_onQuot f a) b = (π_nonCont f a) b := by dsimp [π_onQuot]
 
+lemma π_nonCont_eq_π_on_input' (a : WithFunctional A f) (b : myQuot f) :
+  (π_onQuot f a) (coe' b) = (π_nonCont f a) b := by dsimp [π_onQuot]
+
 @[simp]
 lemma π_apply_on_quot (a : WithFunctional A f) (b : WithFunctional A f) :
   ((π_onQuot f a) (Submodule.Quotient.mk b)) = Submodule.Quotient.mk (a * b) := by
@@ -184,10 +193,50 @@ Steps:
 4. Prove *-preserving
 -/
 
+/-
+To-dos:
+1. figure out how to deal with the completion thing
+   i.e. how to consider a representative from myQuot f
+-/
+
+#check H f
+#check UniformSpace.Completion.induction_on
+
+--agreement of continuous functions on myQuot f implies equality on H f
+#check UniformSpace.Completion.ext
+-- same as above, but you specify space explicitly
+#check UniformSpace.Completion.ext'
+-- if two functions are equal regardless of wether you move them to the completion
+-- before or after applying the function, then they are equal
+-- probably not useful
+#check UniformSpace.Completion.map_unique
+
+--Extend a linear equivalence between normed spaces to a continuous linear equivalence
+-- between Banach spaces with two dense maps e₁ and e₂ and the corresponding norm estimates.
+-- #check LinearEquiv.extend
+-- I might not have a LinearEquiv
+
 noncomputable
 def π_LinContWithA (a : WithFunctional A f) : H f →L[ℂ] H f where
   toFun := UniformSpace.Completion.map (π_onQuot f a)
-  map_add' := by sorry
+  map_add' x y := by
+    refine induction_on x
+      (isClosed_eq ((continuous_map (f := π_onQuot f a)).comp
+        (Continuous.add (continuous_id) (continuous_const (y := y))))
+        (continuous_id.comp (Continuous.add (continuous_map (f := π_onQuot f a))
+          (continuous_const (y := Completion.map (⇑(π_onQuot f a)) y)))))
+      ?_
+    intro b
+    refine induction_on y
+      (isClosed_eq ((continuous_map (f := π_onQuot f a)).comp
+        (Continuous.add (continuous_const (y := coe' b)) (continuous_id)))
+        (continuous_id.comp (Continuous.add
+          (continuous_const (y := Completion.map (⇑(π_onQuot f a)) ↑b))
+          (continuous_map (f := (⇑(π_onQuot f a)))))))
+      ?_
+    intro c
+
+    sorry
   map_smul' := sorry
   cont := UniformSpace.Completion.continuous_map (f := (π_onQuot f a))
 
@@ -200,9 +249,11 @@ def π : A →L[ℂ] (H f →L[ℂ] H f) where
   map_smul' := sorry
   cont := sorry
 
--- how do I know that 1 is the identity?
 -- I think I probably need to specify some more structure on H f →L[ℂ] H f
-lemma π_unital : π f (1 : A) = (1 : H f →L[ℂ] H f) := by sorry
+lemma π_unital : π f (1 : A) = (1 : H f →L[ℂ] H f) := by
+  ext b
+  rw [ContinuousLinearMap.one_apply] -- 1 is definitely the identity
+  sorry
 
 lemma π_mult (a b : WithFunctional A f) : π f (a * b) = (π f a) * (π f b) := by
   sorry
@@ -210,3 +261,13 @@ lemma π_mult (a b : WithFunctional A f) : π f (a * b) = (π f a) * (π f b) :=
 -- how do I know that the below statemnt is using the correct adjoint in B(H_f)?
 lemma π_star_preserving (a : WithFunctional A f) : π f (star a) = star (π f a) := by
   sorry
+
+noncomputable
+instance : StarAlgHom ℂ (WithFunctional A f) (H f →L[ℂ] H f) where
+  toFun := π f
+  map_one' := π_unital f
+  map_mul' := π_mult f
+  map_zero' := ContinuousLinearMap.map_zero (π f)
+  map_add' := ContinuousLinearMap.map_add (π f)
+  commutes' r := sorry
+  map_star' := π_star_preserving f
