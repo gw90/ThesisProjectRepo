@@ -204,4 +204,12 @@ def aToMyQuot (a : A) : myQuot f := Submodule.Quotient.mk a
 def myQuotToH (a : myQuot f) : H f := UniformSpace.Completion.coe' a
 def aToH (a : A) : H f := myQuotToH f (aToMyQuot f a)
 
+variable (b : WithFunctional A f)
+#check (myInnerProductSpace f).inner (Submodule.Quotient.mk b) (Submodule.Quotient.mk b)
+
+@[simp]
+theorem myInner_apply (a : WithFunctional A f) (b : WithFunctional A f) :
+  (myInnerProductSpace f).inner (Submodule.Quotient.mk a) (Submodule.Quotient.mk b)
+    = f (star a * b) := by rfl
+
 end GNS

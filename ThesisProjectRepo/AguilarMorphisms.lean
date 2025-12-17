@@ -4,20 +4,14 @@ import Mathlib.Analysis.Normed.Operator.Extend
 import Mathlib.Analysis.InnerProductSpace.Adjoint
 import Mathlib.Analysis.Normed.Operator.Mul
 
-variable {A : Type*} [CStarAlgebra A] [PartialOrder A] [StarOrderedRing A]
+open ComplexConjugate
 open scoped ComplexOrder
+open Complex
+
+variable {A : Type*} [CStarAlgebra A] [PartialOrder A] [StarOrderedRing A]
 variable (f : A →ₚ[ℂ] ℂ)
 
-
 open GNS
-
-/-
-1. Define multiplication A→A→A
-- prove linear
-- prove continuous
-2. Define multiplication (A f)→(A f)→(A f)
--/
-
 
 -- step 1 : A → A
 noncomputable instance AtoALinCont (a : A) : A →L[ℂ] A
@@ -80,28 +74,117 @@ def g (b : A) : A →ₚ[ℂ] ℂ where
     have : 0 ≤ star (q * b) * (q * b) := star_mul_self_nonneg (q * b)
     exact PositiveLinearMap.map_nonneg f this
 
+-- this might be unnecessary
+instance (b : A) : ContinuousLinearMap (σ := RingHom.id ℂ) (M := A) (M₂ := ℂ) where
+  toFun := g f b
+  map_add' a c := map_add (g f b) a c
+  map_smul' a c := PositiveLinearMap.map_smul_of_tower (g f b) a c
+
+
+@[simp]
+lemma g_apply (b : WithFunctional A f) (x : WithFunctional A f) : f (star b * x * b) = (g f b) x := by rfl
+
+-- Note: PositiveLinearMap.instContinuousLinearMapClassComplexOfLinearMapClassOfOrderHomClass
+-- should give continuity of g so we can use operator norm properties
+
 noncomputable
-def π (a : WithFunctional A f) : (myQuot f) →L[ℂ] (myQuot f) where
+def π (a : WithFunctional A f) : (myQuot f) →ₗ[ℂ] (myQuot f) where
   toFun := Submodule.mapQ (GNS.N f) (GNS.N f) (AWithToAWithLin f a) (helper f a)
   map_add' := by simp
   map_smul' := by simp
+
+variable (a : WithFunctional A f)
+
+@[simp]
+lemma πa_apply (b : WithFunctional A f) : (π f a) (Submodule.Quotient.mk b) = Submodule.Quotient.mk (a * b) := by rfl
+
+lemma boundedUnitBall : (∀ z ∈ Metric.ball 0 1, ‖(π f a) z‖ ≤ ‖a‖) := by
+  intro b bh
+  rw [Metric.mem_ball, dist_zero_right] at bh
+  -- This can be cleaned up alot
+  rw [show ‖b‖ = √(RCLike.re ((myInnerProductSpace f).inner b b)) from rfl] at bh
+  induction b using Submodule.Quotient.induction_on with | _ b
+  simp at bh
+  have bh' : √(f (star b * b)).re ≤ 1 := by linarith
+  have prodInR := fOfxStarxIsReal f (star b)
+  simp at prodInR
+  have bh2 : (f (star b * b)).re ≤ 1 := (Real.sqrt_le_one (x := (f (star b * b)).re)).mp bh'
+  have hyp1 : ((f (star b * b)).re : ℂ) ≤ (1 : ℂ) := by norm_cast
+  rw [prodInR] at hyp1
+  simp only [πa_apply]
+  change ‖aToMyQuot f (a * b)‖ ≤ ‖a‖
+  rw [show
+      ‖aToMyQuot f (a * b)‖ =
+        √(RCLike.re ((myInnerProductSpace f).inner (Submodule.Quotient.mk (a * b)) (Submodule.Quotient.mk (a * b))))
+      from rfl]
+  simp
+  rw [← mul_assoc]
+  nth_rw 2 [mul_assoc]
+  simp
+  have staraaPos := (mul_star_self_nonneg (star a : A))
+  rw [star_star] at staraaPos
+  have step2 := PositiveLinearMap.norm_apply_le_of_nonneg (g f b) (star a * a) staraaPos
+  have : (g f b) 1 = f (star b * b) := by rw [← g_apply f b 1]; simp
+  rw [this] at step2
+  -- use hyp1 to apply an absolute value on the left
+  have starbPos := PositiveLinearMap.map_nonneg f (mul_star_self_nonneg (star b : A))
+  rw [star_star] at starbPos
+  have gval_real : ((g f b) (star a * a)).re = ((g f b) (star a * a)) := by
+    have := fOfxStarxIsReal (g f b) (star a); rw [star_star] at this; assumption
+  rw [← gval_real] at step2
+  simp at step2
+  have gval_pos : 0 ≤ ((g f b) (star a * a)).re := by
+    have := PositiveLinearMap.map_nonneg (g f b) (mul_star_self_nonneg (star a : A))
+    rw [star_star, ← gval_real] at this
+    norm_cast at this
+  have gval_eq_abs : ((g f b) (star a * a)).re = |((g f b) (star a * a)).re| :=
+    Eq.symm (abs_of_nonneg gval_pos)
+  rw [← gval_eq_abs] at step2
+  have f_val_abs_le_one : ‖f (star b * b)‖ ≤ 1 :=
+    (CStarAlgebra.norm_le_one_iff_of_nonneg (f (star b * b)) starbPos).mpr hyp1
+  -- use f_val_abs_le_one and starbPos
+  have f_abs_geq_0 : 0 ≤ ‖f (star b * b)‖ := by exact norm_nonneg (f (star b * b))
+  have stara_a_geq_0 : 0 ≤ ‖star a * a‖ := by exact norm_nonneg (star a * a)
+  have step3 : ‖f (star b * b)‖ * ‖star a * a‖ ≤ 1 * ‖star a * a‖ := by nlinarith
+  norm_num at step3
+  nth_rw 2 [CStarRing.norm_star_mul_self] at step3
+  rw [← pow_two] at step3
+  have step4 : ((g f b) (star a * a)).re ≤ ‖a‖ ^ 2 := by linarith
+  have abs_a_pos : 0 ≤ ‖a‖ := by exact norm_nonneg a
+  exact (Real.sqrt_le_left abs_a_pos).mpr step4
+
+#check LinearMap.bound_of_ball_bound (r := 1) (Real.zero_lt_one) (norm a) (π f a) (boundedUnitBall f a)
+
+
+
+/-
+
   cont := by
     -- Now, we show that π f (a) is continuous on A/Nf
     -- resume proof later. How do I do this in Lean???
+    -- I AM SHOWING BOUNDEDNESS ON THE UNIT BALL WITH THE OPERATOR NORM!!!
     have : ∃ b : (WithFunctional A f), norm (aToMyQuot f b) ≤ 1 := by
       use 0
       unfold aToMyQuot
       simp
     obtain ⟨b, hb⟩ := this
-    have := InnerProductSpace.Core.ofReal_normSq_eq_inner_self (aToMyQuot f b) (𝕜 := ℂ) (F := myQuot f)
-    have h1 : inner ℂ (aToMyQuot f b) (aToMyQuot f b) = f (star b * b) := by exact rfl
+    have :=
+      InnerProductSpace.Core.ofReal_normSq_eq_inner_self (aToMyQuot f b) (𝕜 := ℂ) (F := myQuot f)
+    have h1 : inner ℂ (aToMyQuot f b) (aToMyQuot f b) = f (star b * b) := rfl
     rw [h1] at this
-    have norm_eq_sqrt := InnerProductSpace.Core.norm_eq_sqrt_re_inner (aToMyQuot f b) (𝕜 := ℂ) (F := myQuot f)
+    have norm_eq_sqrt :=
+      InnerProductSpace.Core.norm_eq_sqrt_re_inner (aToMyQuot f b) (𝕜 := ℂ) (F := myQuot f)
     simp at norm_eq_sqrt
     rw [h1] at norm_eq_sqrt
+    -- use
+    #check LinearMap.bound_of_ball_bound (r := 1) (r_pos := by norm_num)
+    -- to get a bound from boundedness on the unit ball
+    -- to-do: prove boundedness on unit ball
+
     -- norm_eq_sqrt is now the first equation on p.252
     -- now we should approach the second equation with the chain of calcs
-
+    -- to-do: imply the boundedness we need from constant bound on unit ball
+    #check LinearMap.mkContinuous
 
 
 
@@ -111,10 +194,11 @@ def π (a : WithFunctional A f) : (myQuot f) →L[ℂ] (myQuot f) where
 -- WE MUST prove continuity by bound - all sources agree. DO THIS!!!
 -- linear + bounded -> continuous
 -- Aguilar invokes theorem similar to PositiveLinearMap.norm_apply_le_of_nonneg
+-/
 
 
 
-
+/-
 
 noncomputable
 def HtoHCont (a : WithFunctional A f) : (GNS.H f) →L[ℂ] (GNS.H f) where
