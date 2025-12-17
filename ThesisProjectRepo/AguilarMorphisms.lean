@@ -242,7 +242,20 @@ def π_LinContWithA (a : WithFunctional A f) : H f →L[ℂ] H f where
     rw [this]
     simp [π_onCompletion_onQuot_equiv]
     rw [coe_add]
-  map_smul' := sorry
+  map_smul' x y := by
+    simp
+    refine induction_on y
+      (isClosed_eq ((continuous_map (f := π_onQuot f a)).comp
+        (continuous_const_smul x))
+        (continuous_id.comp (Continuous.smul
+          (continuous_const (y := x))
+          (continuous_map (f := (⇑(π_onQuot f a)))))))
+      ?_
+    intro c
+    have : (x • (c : Completion (myQuot f))) = ↑(x • c) := Eq.symm (Completion.coe_smul x c)
+    rw [this]
+    rw [π_onCompletion_onQuot_equiv]
+    simp[π_onCompletion_onQuot_equiv]
   cont := UniformSpace.Completion.continuous_map (f := (π_onQuot f a))
 
 variable [CStarAlgebra (H f →L[ℂ] H f)] -- maybe this does what I want?
