@@ -68,8 +68,6 @@ lemma fact4 (x y : A) (t : ℂ) :
       (↑t^2 * (f (x * star y) * (starRingEnd ℂ) (f (x * star y))))/ ↑‖f (x * star y)‖ ^ 2 *
         f (y * star y) := by field_simp
 
-lemma reEqOwnConj (r : ℝ) : (r : ℂ) = conj (r : ℂ) := by exact Eq.symm (conj_ofReal r)
-
 lemma aupetit_6_2_15iilemma (t : ℂ) (ht : t = conj t) (x y : A) (h : f (x * star y) ≠ 0) :
   0 ≤ f (x * star x) + 2 * t * norm (f (x * star y)) + t^2 * f (y * star y) := by
   have := aupetit_6_2_15lemma f x y ((t * f (x * star y))/(norm (f (x * star y))))
