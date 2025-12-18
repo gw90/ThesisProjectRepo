@@ -36,23 +36,21 @@ instance AWithToMyQuotLin (a : WithFunctional A f) : WithFunctional A f →ₗ[�
   map_add' c d := by unfold aToMyQuot; rw [ContinuousLinearMap.mul_apply', mul_add]; simp
   map_smul' c d := by unfold aToMyQuot; simp
 -- only linear, not continuous
--- so try getting a bound?
 
 -- step 4 : myQuot f → myQuot f
 -- does not depend on step 3
+-- I golfed this so much that it's basically unreadable now.
+-- Refer to commit from before december 17 for better
 theorem helper (a : WithFunctional A f) :
   GNS.N f ≤ Submodule.comap (AWithToAWithLinCont f a) (GNS.N f) := by
   intro x xh
-  simp
-  have fxx : f (star x * x) = 0 := xh
-  change f (star (a * x) * (a * x)) = 0
-  simp
   have hab := aup_6_2_15ii f (star (a*x) * a) (star x)
-  simp [fxx] at hab
+  rw [star_mul, star_star, xh, mul_zero] at hab
   norm_cast at hab
-  rwa [sq_nonpos_iff, norm_eq_zero, mul_assoc] at hab
+  rwa [sq_nonpos_iff, norm_eq_zero, mul_assoc, ← star_mul] at hab
 
 -- define the helper positive linear functional g
+-- this is excessively golfed as of December 17 too
 def g (b : A) : A →ₚ[ℂ] ℂ where
   toFun x := f (star b * x * b)
   map_add' x y := by
@@ -61,19 +59,12 @@ def g (b : A) : A →ₚ[ℂ] ℂ where
   monotone' := by
     unfold Monotone
     intro y z hyz
-    simp
     apply le_neg_add_iff_le.mp
-    have : 0 ≤ z-y := sub_nonneg_of_le hyz
-    rw [add_comm, ← sub_eq_add_neg]
-    rw [← map_sub, mul_assoc, mul_assoc, ← mul_sub (star b) (z * b) (y * b)]
-    rw [← sub_mul, ← mul_assoc]
-    have := CStarAlgebra.nonneg_iff_eq_star_mul_self.mp this
-    obtain ⟨q, hq⟩ := this
-    rw [hq]
-    rw [← mul_assoc, mul_assoc (star b * star q)]
-    rw [← star_mul]
-    have : 0 ≤ star (q * b) * (q * b) := star_mul_self_nonneg (q * b)
-    exact PositiveLinearMap.map_nonneg f this
+    obtain ⟨q, hq⟩ := CStarAlgebra.nonneg_iff_eq_star_mul_self.mp (sub_nonneg_of_le hyz)
+    rw [add_comm, ← sub_eq_add_neg, ← map_sub, mul_assoc, mul_assoc,
+      ← mul_sub (star b) (z * b) (y * b), ← sub_mul, ← mul_assoc,
+      hq, ← mul_assoc, mul_assoc (star b * star q), ← star_mul]
+    exact PositiveLinearMap.map_nonneg f (star_mul_self_nonneg (q * b))
 
 -- this might be unnecessary
 instance (b : A) : ContinuousLinearMap (σ := RingHom.id ℂ) (M := A) (M₂ := ℂ) where
@@ -99,59 +90,43 @@ lemma πa_apply (b : WithFunctional A f) :
 lemma boundedUnitBall :
   (∀ z ∈ Metric.ball 0 1, ‖(π_nonCont f a) z‖ ≤ ‖a‖) := by
   intro b bh
-  rw [Metric.mem_ball, dist_zero_right] at bh
-  -- This can be cleaned up alot
-  rw [show ‖b‖ = √(RCLike.re ((myInnerProductSpace f).inner b b)) from rfl] at bh
+  rw [Metric.mem_ball, dist_zero_right,
+    show ‖b‖ = √(RCLike.re ((myInnerProductSpace f).inner b b)) from rfl] at bh
   induction b using Submodule.Quotient.induction_on with | _ b
-  simp at bh
+  rw [myInner_apply, RCLike.re_to_complex] at bh
   have bh' : √(f (star b * b)).re ≤ 1 := by linarith
   have prodInR := fOfxStarxIsReal f (star b)
-  simp at prodInR
+  have staraaPos := (mul_star_self_nonneg (star a : A))
+  have starbPos := PositiveLinearMap.map_nonneg f (mul_star_self_nonneg (star b : A))
+  rw [star_star, πa_apply] at *
   have bh2 : (f (star b * b)).re ≤ 1 := (Real.sqrt_le_one (x := (f (star b * b)).re)).mp bh'
-  have hyp1 : ((f (star b * b)).re : ℂ) ≤ (1 : ℂ) := by norm_cast
-  rw [prodInR] at hyp1
-  simp only [πa_apply]
+  have hyp1 : f (star b * b) ≤ 1 := by rw [← prodInR]; norm_cast
   change ‖aToMyQuot f (a * b)‖ ≤ ‖a‖
   rw [show
       ‖aToMyQuot f (a * b)‖ =
         √(RCLike.re ((myInnerProductSpace f).inner
           (Submodule.Quotient.mk (a * b)) (Submodule.Quotient.mk (a * b))))
-      from rfl]
-  simp
-  rw [← mul_assoc]
+      from rfl,
+    myInner_apply, star_mul, RCLike.re_to_complex, ← mul_assoc]
   nth_rw 2 [mul_assoc]
-  simp
-  have staraaPos := (mul_star_self_nonneg (star a : A))
-  rw [star_star] at staraaPos
-  have step2 := PositiveLinearMap.norm_apply_le_of_nonneg (g f b) (star a * a) staraaPos
-  have : (g f b) 1 = f (star b * b) := by rw [← g_apply f b 1]; simp
-  rw [this] at step2
-  -- use hyp1 to apply an absolute value on the left
-  have starbPos := PositiveLinearMap.map_nonneg f (mul_star_self_nonneg (star b : A))
-  rw [star_star] at starbPos
+  rw [g_apply]
+  have : (g f b) 1 = f (star b * b) := by simp [← g_apply f b 1]
   have gval_real : ((g f b) (star a * a)).re = ((g f b) (star a * a)) := by
-    have := fOfxStarxIsReal (g f b) (star a); rw [star_star] at this; assumption
-  rw [← gval_real] at step2
-  simp at step2
+    have := fOfxStarxIsReal (g f b) (star a); rwa [star_star] at this
   have gval_pos : 0 ≤ ((g f b) (star a * a)).re := by
     have := PositiveLinearMap.map_nonneg (g f b) (mul_star_self_nonneg (star a : A))
     rw [star_star, ← gval_real] at this
-    norm_cast at this
-  have gval_eq_abs : ((g f b) (star a * a)).re = |((g f b) (star a * a)).re| :=
-    Eq.symm (abs_of_nonneg gval_pos)
-  rw [← gval_eq_abs] at step2
-  have f_val_abs_le_one : ‖f (star b * b)‖ ≤ 1 :=
-    (CStarAlgebra.norm_le_one_iff_of_nonneg (f (star b * b)) starbPos).mpr hyp1
-  -- use f_val_abs_le_one and starbPos
-  have f_abs_geq_0 : 0 ≤ ‖f (star b * b)‖ := by exact norm_nonneg (f (star b * b))
-  have stara_a_geq_0 : 0 ≤ ‖star a * a‖ := by exact norm_nonneg (star a * a)
-  have step3 : ‖f (star b * b)‖ * ‖star a * a‖ ≤ 1 * ‖star a * a‖ := by nlinarith
+    simpa
+  have step2 := PositiveLinearMap.norm_apply_le_of_nonneg (g f b) (star a * a) staraaPos
+  rw [this, ← gval_real, norm_real, Real.norm_eq_abs, abs_of_nonneg gval_pos] at step2
+  have step3 : ‖f (star b * b)‖ * ‖star a * a‖ ≤ 1 * ‖star a * a‖ := by
+    nlinarith [norm_nonneg (star a * a), norm_nonneg (f (star b * b)),
+      (CStarAlgebra.norm_le_one_iff_of_nonneg (f (star b * b)) starbPos).mpr hyp1]
   norm_num at step3
   nth_rw 2 [CStarRing.norm_star_mul_self] at step3
   rw [← pow_two] at step3
   have step4 : ((g f b) (star a * a)).re ≤ ‖a‖ ^ 2 := by linarith
-  have abs_a_pos : 0 ≤ ‖a‖ := by exact norm_nonneg a
-  exact (Real.sqrt_le_left abs_a_pos).mpr step4
+  exact (Real.sqrt_le_left (norm_nonneg a)).mpr step4
 
 lemma bound_on_π_exists :
   ∃ C, ∀ (z : myQuot f), ‖(π_nonCont f a) z‖ ≤ C * ‖z‖ :=
@@ -197,8 +172,8 @@ def π_LinContWithA (a : WithFunctional A f) : H f →L[ℂ] H f where
           (continuous_map (f := (⇑(π_onQuot f a)))))))
       ?_
     intro c
-    have : (b : Completion (myQuot f)) + ↑c = ↑(b + c) := by exact Eq.symm (coe_add b c)
-    rw [this]
+    have : ↑(b + c) = (b : Completion (myQuot f)) + ↑c := coe_add b c
+    rw [← this]
     simp [π_onCompletion_onQuot_equiv]
     rw [coe_add]
   map_smul' x y := by
@@ -231,16 +206,10 @@ def π : A →ₗ[ℂ] (H f →L[ℂ] H f) where
             (ContinuousLinearMap.continuous (π_LinContWithA f y)))))
       ?_
     intro b
-    dsimp [π_LinContWithA]
-    simp [π_onCompletion_onQuot_equiv, π_nonCont_eq_π_on_input]
-    dsimp [π_nonCont]
-    dsimp [AWithToAWithLin]
     induction b using Submodule.Quotient.induction_on with | _ b
-    simp only [Submodule.mapQ_apply, ContinuousLinearMap.coe_coe]
-    dsimp [AWithToAWithLinCont]
-    rw [← coe_add, ← Submodule.Quotient.mk_add, ← add_mul]
+    simp [π_LinContWithA, π_onCompletion_onQuot_equiv, π_nonCont_eq_π_on_input, π_nonCont,
+      AWithToAWithLin, AWithToAWithLinCont, coe_add]
   map_smul' c x := by
-    simp only [RingHom.id_apply]
     ext y
     refine induction_on y
       (isClosed_eq ((ContinuousLinearMap.continuous (π_LinContWithA f (c • x))))
@@ -249,50 +218,31 @@ def π : A →ₗ[ℂ] (H f →L[ℂ] H f) where
           (ContinuousLinearMap.continuous (π_LinContWithA f x)))))
       ?_
     intro b
-    dsimp [π_LinContWithA]
-    simp [π_onCompletion_onQuot_equiv, π_nonCont_eq_π_on_input]
-    dsimp [π_nonCont]
-    dsimp [AWithToAWithLin]
     induction b using Submodule.Quotient.induction_on with | _ b
-    simp only [Submodule.mapQ_apply, ContinuousLinearMap.coe_coe]
-    dsimp [AWithToAWithLinCont]
-    simp only [Algebra.smul_mul_assoc, Submodule.Quotient.mk_smul, Completion.coe_smul]
+    simp [π_LinContWithA, π_onCompletion_onQuot_equiv, π_nonCont_eq_π_on_input, π_nonCont,
+      AWithToAWithLin, AWithToAWithLinCont]
 
 lemma π_unital : π f (1 : A) = (1 : H f →L[ℂ] H f) := by
   ext b
-  rw [ContinuousLinearMap.one_apply] -- 1 is definitely the identity
-  dsimp [π]
   refine induction_on b
       (isClosed_eq ((ContinuousLinearMap.continuous (π_LinContWithA f (1))))
         (continuous_id))
       ?_
   intro a
-  dsimp [π_LinContWithA]
-  simp [π_onCompletion_onQuot_equiv]
-  congr
-  dsimp [π_onQuot]
-  -- induction and then πa_apply
   induction a using Submodule.Quotient.induction_on with | _ a
-  simp [πa_apply]
+  simp [π, π_LinContWithA, π_onCompletion_onQuot_equiv]
 
 -- variable [CStarAlgebra (H f →L[ℂ] H f)] -- maybe this does what I want?
 
 lemma π_mult (a b : WithFunctional A f) : π f (a * b) = (π f a) * (π f b) := by
   ext c
-  simp only [ContinuousLinearMap.coe_mul, Function.comp_apply]
-  dsimp [π]
   refine induction_on c
       (isClosed_eq ((ContinuousLinearMap.continuous (π_LinContWithA f (a * b))))
         (ContinuousLinearMap.continuous ((π_LinContWithA f (a)).comp (π_LinContWithA f (b)))))
       ?_
   intro d
-  dsimp [π_LinContWithA]
-  simp [π_onCompletion_onQuot_equiv]
-  dsimp [π_onQuot]
-  -- induction and then πa_apply
   induction d using Submodule.Quotient.induction_on with | _ d
-  simp [πa_apply]
-  rw [mul_assoc]
+  simp [π, π_LinContWithA, π_onCompletion_onQuot_equiv, ← mul_assoc]
 
 open ContinuousLinearMap -- this mean adjoint = star
 lemma π_star_preserving (a : WithFunctional A f) : π f (star a) = star (π f a) := by
@@ -313,45 +263,28 @@ lemma π_star_preserving (a : WithFunctional A f) : π f (star a) = star (π f a
         (ContinuousLinearMap.continuous (((π f) a)))))
       ?_
   intro y
-  dsimp [π]
-  dsimp [π_LinContWithA]
-  simp [π_onCompletion_onQuot_equiv]
-  dsimp [π_onQuot]
   induction x using Submodule.Quotient.induction_on with | _ x
   induction y using Submodule.Quotient.induction_on with | _ y
-  simp [πa_apply]
-  have (a b : myQuot f) : inner ℂ (coe' a) (coe' b) = myInner f a b := by
-    simp only [inner_coe]
-    rfl
-  rw [this, this]
-  dsimp [myInner, myHalfSQ, myHalf, mySesquilinear]
-  simp
-  congr 2
-  rw [mul_assoc]
+  have (a b : myQuot f) : inner ℂ (coe' a) (coe' b) = myInner f a b := by rw [inner_coe]; rfl
+  simp [π, π_LinContWithA, π_onCompletion_onQuot_equiv, this, myInner, myHalfSQ, myHalf,
+    mySesquilinear, mul_assoc]
 
 lemma π_smul (r : ℂ) :
   (π f) ((algebraMap ℂ (WithFunctional A f)) r) = (algebraMap ℂ (H f →L[ℂ] H f)) r := by
   ext b
-  simp only [ContinuousLinearMap.algebraMap_apply]
-  rw [← RingHom.smulOneHom_eq_algebraMap]
-  rw [RingHom.smulOneHom_apply r]
-  simp
+  simp only [π, ← RingHom.smulOneHom_eq_algebraMap, RingHom.smulOneHom_apply, map_smul,
+    LinearMap.coe_mk, AddHom.coe_mk, π_LinContWithA, coe_smul', coe_mk', Pi.smul_apply, one_apply]
   congr
-  dsimp [π, π_LinContWithA]
   refine induction_on b
     (isClosed_eq ((ContinuousLinearMap.continuous (π_LinContWithA f (1))))
       (continuous_id))
     ?_
   intro c
-  simp [π_onCompletion_onQuot_equiv]
-  congr
-  dsimp [π_onQuot]
-  -- induction and then πa_apply
   induction c using Submodule.Quotient.induction_on with | _ c
-  simp [πa_apply]
+  simp [π_onCompletion_onQuot_equiv]
 
 noncomputable
-instance : StarAlgHom ℂ (WithFunctional A f) (H f →L[ℂ] H f) where
+instance π_hom : StarAlgHom ℂ (WithFunctional A f) (H f →L[ℂ] H f) where
   toFun := π f
   map_one' := π_unital f
   map_mul' := π_mult f
