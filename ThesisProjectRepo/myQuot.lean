@@ -1,6 +1,6 @@
 import ThesisProjectRepo.AupetitTheorems
 import Mathlib.Analysis.InnerProductSpace.Completion
-import Mathlib.Topology.UniformSpace.Completion
+import ThesisProjectRepo.AupetitTheorems
 
 open scoped ComplexOrder
 

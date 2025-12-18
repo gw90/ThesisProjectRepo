@@ -1,5 +1,4 @@
 import Mathlib.Analysis.CStarAlgebra.PositiveLinearMap
-import Mathlib.Analysis.CStarAlgebra.Spectrum
 
 open ComplexConjugate
 open scoped ComplexOrder

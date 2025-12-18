@@ -1,12 +1,5 @@
+import Mathlib.Analysis.InnerProductSpace.Adjoint
 import ThesisProjectRepo.myQuot
-import Mathlib.Analysis.VonNeumannAlgebra.Basic
-import Mathlib.Analysis.Normed.Operator.Extend
-import Mathlib.Analysis.InnerProductSpace.Adjoint
-import Mathlib.Analysis.Normed.Operator.Mul
-import Mathlib.Topology.Continuous
-import Mathlib.Topology.Algebra.Monoid.Defs
-import Mathlib.Analysis.InnerProductSpace.Adjoint
-import Mathlib.Analysis.InnerProductSpace.Continuous
 
 open ComplexConjugate
 open scoped ComplexOrder
@@ -85,12 +78,12 @@ def g (b : A) : A →ₚ[ℂ] ℂ where
 -- this might be unnecessary
 instance (b : A) : ContinuousLinearMap (σ := RingHom.id ℂ) (M := A) (M₂ := ℂ) where
   toFun := g f b
-  map_add' a c := map_add (g f b) a c
-  map_smul' a c := PositiveLinearMap.map_smul_of_tower (g f b) a c
-
+  map_add' := map_add (g f b)
+  map_smul' := PositiveLinearMap.map_smul_of_tower (g f b)
 
 @[simp]
-lemma g_apply (b : WithFunctional A f) (x : WithFunctional A f) : f (star b * x * b) = (g f b) x := by rfl
+lemma g_apply (b : WithFunctional A f) (x : WithFunctional A f) :
+  f (star b * x * b) = (g f b) x := by rfl
 
 variable (a : WithFunctional A f)
 
@@ -224,8 +217,6 @@ def π_LinContWithA (a : WithFunctional A f) : H f →L[ℂ] H f where
     simp[π_onCompletion_onQuot_equiv]
   cont := UniformSpace.Completion.continuous_map (f := (π_onQuot f a))
 
---
--- from here, follow Aguilar p. 253
 noncomputable
 def π : A →ₗ[ℂ] (H f →L[ℂ] H f) where
   toFun := π_LinContWithA f
@@ -267,20 +258,6 @@ def π : A →ₗ[ℂ] (H f →L[ℂ] H f) where
     dsimp [AWithToAWithLinCont]
     simp only [Algebra.smul_mul_assoc, Submodule.Quotient.mk_smul, Completion.coe_smul]
 
--- I will need to prove continuity, and use Aupetit's boundedness proof
-lemma π_cont : Continuous (π f) := by sorry
-/-
-  cont := by
-    -- we have to maybe pass it a parameter and prove boundedness
-    have bound_on_πf_exists :
-      ∃ C, ∀ (a : A), ‖π a‖ ≤ C * ‖a‖ :=
-      LinearMap.bound_of_ball_bound
-        (r := 1) (Real.zero_lt_one) (norm a) (π a) (boundedUnitBall f a)
-
-    sorry
--/
-
--- I think I probably need to specify some more structure on H f →L[ℂ] H f
 lemma π_unital : π f (1 : A) = (1 : H f →L[ℂ] H f) := by
   ext b
   rw [ContinuousLinearMap.one_apply] -- 1 is definitely the identity
@@ -317,7 +294,6 @@ lemma π_mult (a b : WithFunctional A f) : π f (a * b) = (π f a) * (π f b) :=
   simp [πa_apply]
   rw [mul_assoc]
 
---rw [← ContinuousLinearMap.adjoint_inner_left (π f a)]
 open ContinuousLinearMap -- this mean adjoint = star
 lemma π_star_preserving (a : WithFunctional A f) : π f (star a) = star (π f a) := by
   refine (ContinuousLinearMap.eq_adjoint_iff (π f (star a)) (π f a)).mpr ?_
