@@ -43,22 +43,12 @@ instance N (f : A →ₚ[ℂ] ℂ) : Submodule ℂ (WithFunctional A f) where
   carrier := {a : (WithFunctional A f) | f (star a * a) = 0}
   add_mem' := by
     intro a b ha hb
-    rw [Set.mem_setOf_eq] at ha
-    rw [Set.mem_setOf_eq] at hb
-    have hab := aux f a b ha
-    have hba := aux f b a hb
-    rw [Set.mem_setOf_eq, star_add, left_distrib, right_distrib, right_distrib,
-      ← add_assoc, map_add, map_add, map_add, ha, hb, add_zero, zero_add, hba,
-      hab, add_zero]
+    rw [Set.mem_setOf_eq] at *
+    simp [left_distrib, right_distrib, ha, hb, aux]
   zero_mem' := by simp
-  smul_mem' c := by
-    intro x hx
+  smul_mem' c x hx := by
     rw [Set.mem_setOf_eq] at hx
-    rw [Set.mem_setOf_eq, star_smul, RCLike.star_def, Algebra.mul_smul_comm,
-      Algebra.smul_mul_assoc, map_smul, smul_eq_mul, mul_eq_zero, map_smul,
-      smul_eq_mul, mul_eq_zero, map_eq_zero, or_self_left]
-    right
-    exact hx
+    simp [hx]
 
 -- Begin code from Eric Wieser
 -- noncomputability should be fixed in by Eric Wieser's bug fix
@@ -82,11 +72,8 @@ instance : Module ℂ (myQuot f) := by unfold myQuot; infer_instance
 
 theorem helper (a : WithFunctional A f) : N f ≤ LinearMap.ker ((mySesquilinear f a)) := by
   intro b bh
-  rw [LinearMap.mem_ker, mySesquilinear_apply]
-  have bhzero : f (star b * b) = 0 := bh
   have hab := aup_6_2_15ii f (star a) (star b)
-  rw [star_star, star_star] at hab
-  rw [bh, mul_zero] at hab
+  rw [star_star, star_star, bh, mul_zero] at hab
   norm_cast at hab
   rwa [sq_nonpos_iff, norm_eq_zero] at hab
 
@@ -98,30 +85,21 @@ noncomputable instance myHalfSQ :
   toFun := myHalf f
   map_add' a b := by
     unfold myHalf
-    simp_all only [map_add]
-    ext x : 2
-    simp_all only [Submodule.liftQ_mkQ, LinearMap.add_apply, mySesquilinear_apply,
-      LinearMap.coe_comp, Function.comp_apply, Submodule.mkQ_apply, Submodule.liftQ_apply]
+    simp only [map_add]
+    ext x
+    simp [mySesquilinear_apply]
   map_smul' a b := by
     unfold myHalf
-    simp_all only [LinearMap.map_smulₛₗ]
-    ext x : 2
-    simp_all only [Submodule.liftQ_mkQ, LinearMap.smul_apply, mySesquilinear_apply,
-      smul_eq_mul, LinearMap.coe_comp, Function.comp_apply, Submodule.mkQ_apply,
-      Submodule.liftQ_apply]
+    ext x
+    simp [mySesquilinear_apply]
 
 theorem halfHelper : N f ≤ LinearMap.ker (myHalfSQ f) := by
   intro a ah
-  simp only [LinearMap.mem_ker]
   change (myHalf f) a = 0
   unfold myHalf
-  have : f (star a * a) = 0 := ah
   ext b
-  rw [Submodule.liftQ_mkQ, mySesquilinear_apply, LinearMap.zero_comp, LinearMap.zero_apply]
-
   have hab := aup_6_2_15ii f (star a) (star b)
-  rw [star_star, star_star] at hab
-  rw [ah, zero_mul] at hab
+  rw [star_star, star_star, ah, zero_mul] at hab
   norm_cast at hab
   rwa [sq_nonpos_iff, norm_eq_zero] at hab
 
@@ -148,38 +126,21 @@ noncomputable instance myInnerProductSpace : InnerProductSpace.Core ℂ (myQuot 
   inner a b := myInner f a b
   conj_inner_symm a b := by
     induction a using Submodule.Quotient.induction_on with | _ a
-    · induction b using Submodule.Quotient.induction_on with | _ b
-      · rw [fEquiv f a b, fEquiv f b a]
-        simp only [mySesquilinear_apply]
-        rw [← aupetit_6_2_15i f (star b * a)]
-        simp only [star_mul, star_star]
+    induction b using Submodule.Quotient.induction_on with | _ b
+    simp [fEquiv f a b, fEquiv f b a, mySesquilinear_apply, ← aupetit_6_2_15i f (star b * a)]
   re_inner_nonneg a := by
     induction a using Submodule.Quotient.induction_on with | _ a
-    · rw [fEquiv f a a, mySesquilinear_apply, RCLike.re_to_complex]
-      have nonneg : 0 ≤ star (ofFunctional f a) * (ofFunctional f a) :=
-        star_mul_self_nonneg (ofFunctional f a)
-      have := fOfxStarxIsReal f (star a)
-      simp at this
-      have zeroleq : 0 ≤ f (star a * a) := PositiveLinearMap.map_nonneg f nonneg
-      rw [← this] at zeroleq
-      exact Complex.zero_le_real.mp zeroleq
-  add_left a b c := by
-    induction a using Submodule.Quotient.induction_on with | _ a
-    · induction b using Submodule.Quotient.induction_on with | _ b
-      · induction c using Submodule.Quotient.induction_on with | _ c
-        · rw [map_add, LinearMap.add_apply]
-  smul_left a b c := by
-    induction a using Submodule.Quotient.induction_on with | _ a
-    · induction b using Submodule.Quotient.induction_on with | _ b
-      · rw [LinearMap.map_smulₛₗ, LinearMap.smul_apply, smul_eq_mul]
+    have zeroleq : 0 ≤ f (star a * a) :=
+      PositiveLinearMap.map_nonneg f (star_mul_self_nonneg (ofFunctional f a))
+    have := fOfxStarxIsReal f (star a)
+    rw [star_star] at this
+    rw [← this] at zeroleq
+    simp [fEquiv f a a, mySesquilinear_apply, Complex.zero_le_real.mp zeroleq]
+  add_left a b c := by simp
+  smul_left a b c := by simp
   definite a := by
-    induction a using Submodule.Quotient.induction_on with | _ a
-    · rw [fEquiv f a a, mySesquilinear_apply]
-      intro ha
-      have : a ∈ N f := ha
-      apply (Submodule.Quotient.mk_eq_zero (N f) (x := a)).mpr
-      assumption
-
+    induction a using Submodule.Quotient.induction_on
+    exact (Submodule.Quotient.mk_eq_zero (N f)).mpr
 
 noncomputable instance : NormedAddCommGroup (myQuot f) :=
   InnerProductSpace.Core.toNormedAddCommGroup (cd := myInnerProductSpace f)
