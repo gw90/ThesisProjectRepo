@@ -6,8 +6,8 @@ open scoped ComplexOrder
 open Complex
 
 open UniformSpace
-open SeparationQuotient
 open UniformSpace.Completion
+open Submodule
 
 variable {A : Type*} [CStarAlgebra A] [PartialOrder A] [StarOrderedRing A]
 variable (f : A →ₚ[ℂ] ℂ)
@@ -131,19 +131,19 @@ noncomputable
 def π_OfA (a : WithFunctional A f) : H f →L[ℂ] H f where
   toFun := UniformSpace.Completion.map (π_onQuot f a)
   map_add' x y := by
-    induction x using induction_on with
+    induction x using Completion.induction_on with
     | hp => exact (isClosed_eq ((continuous_map).comp (by continuity))
         (Continuous.add (continuous_map) (continuous_const)))
     | ih x
-    induction y using induction_on with
+    induction y using Completion.induction_on with
     | hp => exact (isClosed_eq ((continuous_map).comp (by continuity))
         (Continuous.add (continuous_const) (continuous_map)))
     | ih y
-    rw [← coe_add]
+    rw [← Completion.coe_add]
     simp only [π_onCompletion_onQuot_equiv, map_add]
-    rw [coe_add]
+    rw [Completion.coe_add]
   map_smul' x y := by
-    induction y using induction_on with
+    induction y using Completion.induction_on with
     | hp => exact (isClosed_eq ((continuous_map).comp (continuous_const_smul x))
         (Continuous.smul (continuous_const) (continuous_map)))
     | ih y
@@ -158,35 +158,35 @@ def π : StarAlgHom ℂ (WithFunctional A f) (H f →L[ℂ] H f) where
   toFun := π_OfA f
   map_one' := by
     ext b
-    induction b using induction_on with
+    induction b using Completion.induction_on with
     | hp => exact (isClosed_eq (by continuity) (by continuity))
     | ih b
-    induction b using Submodule.Quotient.induction_on
+    induction b using Quotient.induction_on
     simp [π_OfA, π_onCompletion_onQuot_equiv]
   map_mul' a b := by
     ext c
-    induction c using induction_on with
+    induction c using Completion.induction_on with
     | hp => exact (isClosed_eq (by continuity)
           (ContinuousLinearMap.continuous ((π_OfA f (a)).comp (π_OfA f (b)))))
     | ih c
-    induction c using Submodule.Quotient.induction_on
+    induction c using Quotient.induction_on
     simp [π_OfA, π_onCompletion_onQuot_equiv, ← mul_assoc]
   map_zero' := by
     ext y
-    induction y using induction_on with
+    induction y using Completion.induction_on with
     | hp => exact (isClosed_eq (by continuity) (by continuity))
     | ih y
-    induction y using Submodule.Quotient.induction_on
+    induction y using Quotient.induction_on
     simp [π_OfA, π_onCompletion_onQuot_equiv, π_nonCont_eq_π_on_input, π_OfA_onQuot,
       AWithToAWithLin]
     rfl
   map_add' x y := by
     ext c
     rw [ContinuousLinearMap.add_apply]
-    induction c using induction_on with
+    induction c using Completion.induction_on with
     | hp => exact (isClosed_eq (by continuity) (by continuity))
     | ih c
-    induction c using Submodule.Quotient.induction_on
+    induction c using Quotient.induction_on
     simp [π_OfA, π_onCompletion_onQuot_equiv, π_nonCont_eq_π_on_input, π_OfA_onQuot,
       AWithToAWithLin, Completion.coe_add]
   commutes' r := by
@@ -194,20 +194,20 @@ def π : StarAlgHom ℂ (WithFunctional A f) (H f →L[ℂ] H f) where
     congr
     ext c
     simp only [π_onQuot, LinearMap.mkContinuousOfExistsBound_apply]
-    induction c using Submodule.Quotient.induction_on
+    induction c using Quotient.induction_on
     simp [πa_OfA_onQuot_apply]
   map_star' a := by
     refine (ContinuousLinearMap.eq_adjoint_iff (π_OfA f (star a)) (π_OfA f a)).mpr ?_
     intro x y
-    induction x using induction_on with
+    induction x using Completion.induction_on with
     | hp => exact (isClosed_eq (by continuity)
       (Continuous.inner (continuous_id) (continuous_const)))
     | ih x
-    induction y using induction_on with
+    induction y using Completion.induction_on with
     | hp => exact (isClosed_eq (Continuous.inner (continuous_const) (continuous_id))
         (Continuous.inner (by continuity) (by continuity)))
     | ih y
-    induction x using Submodule.Quotient.induction_on
-    induction y using Submodule.Quotient.induction_on
+    induction x using Quotient.induction_on
+    induction y using Quotient.induction_on
     have (a b : myQuot f) : inner ℂ (coe' a) (coe' b) = inner_f f a b := by rw [inner_coe]; rfl
     simp [π_OfA, π_onCompletion_onQuot_equiv, this, mul_assoc]
