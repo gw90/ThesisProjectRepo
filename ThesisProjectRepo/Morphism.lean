@@ -15,13 +15,13 @@ variable (f : A →ₚ[ℂ] ℂ)
 open GNS
 
 noncomputable
-instance AWithToAWithLin (a : WithFunctional A f) : WithFunctional A f →ₗ[ℂ] WithFunctional A f
+instance A_A_mul (a : WithFunctional A f) : WithFunctional A f →ₗ[ℂ] WithFunctional A f
   := (ContinuousLinearMap.mul ℂ (WithFunctional A f)) a
 
 -- I golfed this so much that it's basically unreadable now.
 -- Refer to commit from before december 17 for better
-theorem helper (a : WithFunctional A f) :
-  GNS.N f ≤ Submodule.comap (AWithToAWithLin f a) (GNS.N f) := by
+theorem A_A_mul_well_defined_onQuot (a : WithFunctional A f) :
+  GNS.N f ≤ Submodule.comap (A_A_mul f a) (GNS.N f) := by
   intro x xh
   have hab := CS_with_functional f ((star a) * (a * x)) x
   rw [star_mul, star_star, xh, mul_zero] at hab
@@ -52,15 +52,16 @@ lemma g_apply (b : WithFunctional A f) (x : WithFunctional A f) :
 variable (a : WithFunctional A f)
 
 noncomputable
-def π_OfA_onQuot : (myQuot f) →ₗ[ℂ] (myQuot f) where
-  toFun := Submodule.mapQ (GNS.N f) (GNS.N f) (AWithToAWithLin f a) (helper f a)
+def π_OfA_onQuot : (A_mod_N f) →ₗ[ℂ] (A_mod_N f) where
+  toFun := Submodule.mapQ (GNS.N f) (GNS.N f) (A_A_mul f a) (A_A_mul_well_defined_onQuot f a)
   map_add' := by simp
   map_smul' := by simp
 
-lemma πa_OfA_onQuot_apply (b : WithFunctional A f) :
+@[simp]
+lemma π_OfA_onQuot_apply (b : WithFunctional A f) :
   (π_OfA_onQuot f a) (Submodule.Quotient.mk b) = Submodule.Quotient.mk (a * b) := by rfl
 
-lemma boundedUnitBall :
+lemma π_OfA_onQuot_bounded_unit_ball :
   (∀ z ∈ Metric.ball 0 1, ‖(π_OfA_onQuot f a) z‖ ≤ ‖a‖) := by
   intro b bh
   rw [Metric.mem_ball, dist_zero_right, InnerProductSpace.Core.norm_eq_sqrt_re_inner] at bh
@@ -70,7 +71,7 @@ lemma boundedUnitBall :
   have prodInR := f_of_x_star_x_is_real f (star b)
   have staraaPos := (mul_star_self_nonneg (star a : A))
   have starbPos := PositiveLinearMap.map_nonneg f (mul_star_self_nonneg (star b : A))
-  rw [star_star, πa_OfA_onQuot_apply] at *
+  rw [star_star, π_OfA_onQuot_apply] at *
   have bh2 : (f (star b * b)).re ≤ 1 := (Real.sqrt_le_one (x := (f (star b * b)).re)).mp bh'
   have hyp1 : f (star b * b) ≤ 1 := by rw [← prodInR]; norm_cast
   rw [InnerProductSpace.Core.norm_eq_sqrt_re_inner, inner_f_apply_on_quot_mk, star_mul,
@@ -95,34 +96,32 @@ lemma boundedUnitBall :
   have step4 : ((g f b) (star a * a)).re ≤ ‖a‖ ^ 2 := by linarith
   exact (Real.sqrt_le_left (norm_nonneg a)).mpr step4
 
-lemma bound_on_π_exists :
-  ∃ C, ∀ (z : myQuot f), ‖(π_OfA_onQuot f a) z‖ ≤ C * ‖z‖ :=
+lemma bound_on_π_ofA_exists :
+  ∃ C, ∀ (z : A_mod_N f), ‖(π_OfA_onQuot f a) z‖ ≤ C * ‖z‖ :=
   LinearMap.bound_of_ball_bound
-    (r := 1) (Real.zero_lt_one) (norm a) (π_OfA_onQuot f a) (boundedUnitBall f a)
+    (r := 1) (Real.zero_lt_one) (norm a) (π_OfA_onQuot f a) (π_OfA_onQuot_bounded_unit_ball f a)
 
 -- maybe later try to make a specific bound so that it can be computable
 noncomputable
-def π_onQuot : (myQuot f) →L[ℂ] (myQuot f) :=
-  LinearMap.mkContinuousOfExistsBound (π_OfA_onQuot f a) (bound_on_π_exists f a)
+def π_ofA_onQuot : (A_mod_N f) →L[ℂ] (A_mod_N f) :=
+  LinearMap.mkContinuousOfExistsBound (π_OfA_onQuot f a) (bound_on_π_ofA_exists f a)
 
-lemma π_nonCont_eq_π :
-  (π_onQuot f a) = (π_OfA_onQuot f a) := by dsimp [π_onQuot]
-
-lemma π_nonCont_eq_π_on_input (b : myQuot f) :
-  (π_onQuot f a) b = (π_OfA_onQuot f a) b := by dsimp [π_onQuot]
+@[simp]
+lemma π_nonCont_eq_π_on_input (b : A_mod_N f) :
+  (π_ofA_onQuot f a) b = (π_OfA_onQuot f a) b := by dsimp [π_ofA_onQuot]
 
 @[simp]
 lemma π_apply_on_quot (b : WithFunctional A f) :
-  ((π_onQuot f a) (Submodule.Quotient.mk b)) = Submodule.Quotient.mk (a * b) := by
-    rw [π_nonCont_eq_π_on_input f a (Submodule.Quotient.mk b), πa_OfA_onQuot_apply]
+  ((π_ofA_onQuot f a) (Submodule.Quotient.mk b)) = Submodule.Quotient.mk (a * b) := by simp
 
-lemma π_onCompletion_onQuot_equiv (b : myQuot f) :
-  Completion.map ⇑(π_onQuot f a) ↑b = (π_onQuot f a) b := by
-    simp [map_coe (ContinuousLinearMap.uniformContinuous (π_onQuot f a))]
+@[simp]
+lemma π_onCompletion_onQuot_equiv (b : A_mod_N f) :
+  Completion.map ⇑(π_ofA_onQuot f a) ↑b = (π_ofA_onQuot f a) b := by
+    simp [map_coe (ContinuousLinearMap.uniformContinuous (π_ofA_onQuot f a))]
 
 noncomputable
 def π_OfA (a : WithFunctional A f) : H f →L[ℂ] H f where
-  toFun := Completion.map (π_onQuot f a)
+  toFun := Completion.map (π_ofA_onQuot f a)
   map_add' x y := by
     induction x using Completion.induction_on with
     | hp => exact (isClosed_eq ((continuous_map).comp (by continuity))
@@ -141,7 +140,7 @@ def π_OfA (a : WithFunctional A f) : H f →L[ℂ] H f where
         (Continuous.smul (continuous_const) (continuous_map)))
     | ih y
     rw [← Completion.coe_smul, π_onCompletion_onQuot_equiv]
-    simp[π_onCompletion_onQuot_equiv]
+    simp
   cont := continuous_map
 
 open ContinuousLinearMap
@@ -155,7 +154,7 @@ def π : StarAlgHom ℂ (WithFunctional A f) (H f →L[ℂ] H f) where
     | hp => exact (isClosed_eq (by continuity) (by continuity))
     | ih b
     induction b using Quotient.induction_on
-    simp [π_OfA, π_onCompletion_onQuot_equiv]
+    simp [π_OfA]
   map_mul' a b := by
     ext c
     induction c using Completion.induction_on with
@@ -163,15 +162,14 @@ def π : StarAlgHom ℂ (WithFunctional A f) (H f →L[ℂ] H f) where
           (ContinuousLinearMap.continuous ((π_OfA f (a)).comp (π_OfA f (b)))))
     | ih c
     induction c using Quotient.induction_on
-    simp [π_OfA, π_onCompletion_onQuot_equiv, ← mul_assoc]
+    simp [π_OfA, ← mul_assoc]
   map_zero' := by
     ext y
     induction y using Completion.induction_on with
     | hp => exact (isClosed_eq (by continuity) (by continuity))
     | ih y
     induction y using Quotient.induction_on
-    simp [π_OfA, π_onCompletion_onQuot_equiv, π_nonCont_eq_π_on_input, π_OfA_onQuot,
-      AWithToAWithLin]
+    simp [π_OfA]
     rfl
   map_add' x y := by
     ext c
@@ -180,15 +178,14 @@ def π : StarAlgHom ℂ (WithFunctional A f) (H f →L[ℂ] H f) where
     | hp => exact (isClosed_eq (by continuity) (by continuity))
     | ih c
     induction c using Quotient.induction_on
-    simp [π_OfA, π_onCompletion_onQuot_equiv, π_nonCont_eq_π_on_input, π_OfA_onQuot,
-      AWithToAWithLin, Completion.coe_add]
+    simp [π_OfA, π_OfA_onQuot, A_A_mul, Completion.coe_add]
   commutes' r := by
     simp only [← RingHom.smulOneHom_eq_algebraMap, RingHom.smulOneHom_apply, π_OfA]
     congr
     ext c
-    simp only [π_onQuot, LinearMap.mkContinuousOfExistsBound_apply]
+    simp only [π_ofA_onQuot, LinearMap.mkContinuousOfExistsBound_apply]
     induction c using Quotient.induction_on
-    simp [πa_OfA_onQuot_apply]
+    simp
   map_star' a := by
     refine (ContinuousLinearMap.eq_adjoint_iff (π_OfA f (star a)) (π_OfA f a)).mpr ?_
     intro x y
@@ -202,5 +199,5 @@ def π : StarAlgHom ℂ (WithFunctional A f) (H f →L[ℂ] H f) where
     | ih y
     induction x using Quotient.induction_on
     induction y using Quotient.induction_on
-    have (a b : myQuot f) : inner ℂ (coe' a) (coe' b) = inner_f f a b := by rw [inner_coe]; rfl
-    simp [π_OfA, π_onCompletion_onQuot_equiv, this, mul_assoc]
+    have (a b : A_mod_N f) : inner ℂ (coe' a) (coe' b) = inner_f f a b := by rw [inner_coe]; rfl
+    simp [π_OfA, this, mul_assoc]

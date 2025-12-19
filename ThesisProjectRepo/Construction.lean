@@ -66,10 +66,10 @@ theorem sq_apply (x y : (WithFunctional A f)) :
 -- End code from Eric Wieser
 
 -- I believe this sucessfully erases the norm
-def myQuot := (WithFunctional A f) ⧸ (N f)
+def A_mod_N := (WithFunctional A f) ⧸ (N f)
 
-instance : AddCommGroup (myQuot f) := by unfold myQuot; infer_instance
-instance : Module ℂ (myQuot f) := by unfold myQuot; infer_instance
+instance : AddCommGroup (A_mod_N f) := by unfold A_mod_N; infer_instance
+instance : Module ℂ (A_mod_N f) := by unfold A_mod_N; infer_instance
 
 theorem sq_well_defined (a : WithFunctional A f) : N f ≤ LinearMap.ker ((sq f a)) := by
   intro b bh
@@ -104,7 +104,7 @@ noncomputable def inner_f := Submodule.liftQ (N f) (half_sq f) (half_sq_well_def
 theorem inner_f_def (a b : WithFunctional A f) :
   ((inner_f f) (Submodule.Quotient.mk a)) (Submodule.Quotient.mk b) = sq f a b := by rfl
 
-noncomputable instance myInnerProductSpace : InnerProductSpace.Core ℂ (myQuot f) where
+noncomputable instance A_mod_N_innerProd_space : InnerProductSpace.Core ℂ (A_mod_N f) where
   inner a b := inner_f f a b
   conj_inner_symm a b := by
     induction a using Submodule.Quotient.induction_on with | _ a
@@ -127,13 +127,13 @@ noncomputable instance myInnerProductSpace : InnerProductSpace.Core ℂ (myQuot 
     induction a using Submodule.Quotient.induction_on
     exact (Submodule.Quotient.mk_eq_zero (N f)).mpr
 
-noncomputable instance : NormedAddCommGroup (myQuot f) :=
-  InnerProductSpace.Core.toNormedAddCommGroup (cd := myInnerProductSpace f)
-noncomputable instance : InnerProductSpace ℂ (myQuot f) :=
-  InnerProductSpace.ofCore (myInnerProductSpace f).toCore
-noncomputable instance : NormedSpace ℂ (myQuot f) := by infer_instance
+noncomputable instance : NormedAddCommGroup (A_mod_N f) :=
+  InnerProductSpace.Core.toNormedAddCommGroup (cd := A_mod_N_innerProd_space f)
+noncomputable instance : InnerProductSpace ℂ (A_mod_N f) :=
+  InnerProductSpace.ofCore (A_mod_N_innerProd_space f).toCore
+noncomputable instance : NormedSpace ℂ (A_mod_N f) := by infer_instance
 
-def H := UniformSpace.Completion (myQuot f)
+def H := UniformSpace.Completion (A_mod_N f)
 
 noncomputable instance : UniformSpace (H f) := by unfold H; infer_instance
 instance : CompleteSpace (H f) := by unfold H; infer_instance
@@ -145,13 +145,13 @@ protected
 instance : HilbertSpace ℂ (H f) where
 
 
-def aToMyQuot (a : A) : myQuot f := Submodule.Quotient.mk a
-def myQuotToH (a : myQuot f) : H f := UniformSpace.Completion.coe' a
+def aToMyQuot (a : A) : A_mod_N f := Submodule.Quotient.mk a
+def myQuotToH (a : A_mod_N f) : H f := UniformSpace.Completion.coe' a
 def aToH (a : A) : H f := myQuotToH f (aToMyQuot f a)
 
 @[simp]
 theorem inner_f_apply_on_quot_mk (a : WithFunctional A f) (b : WithFunctional A f) :
-  (myInnerProductSpace f).inner (Submodule.Quotient.mk a) (Submodule.Quotient.mk b)
+  (A_mod_N_innerProd_space f).inner (Submodule.Quotient.mk a) (Submodule.Quotient.mk b)
     = f (star a * b) := by rfl
 
 end GNS
