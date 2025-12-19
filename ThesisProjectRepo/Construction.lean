@@ -1,5 +1,5 @@
 import Mathlib.Analysis.InnerProductSpace.Completion
-import ThesisProjectRepo.AupetitTheorems
+import ThesisProjectRepo.HelperTheorems
 
 open scoped ComplexOrder
 
@@ -43,7 +43,7 @@ instance N (f : A →ₚ[ℂ] ℂ) : Submodule ℂ (WithFunctional A f) where
   add_mem' := by
     intro a b ha hb
     rw [Set.mem_setOf_eq] at *
-    simp [left_distrib, right_distrib, ha, hb, aux]
+    simp [left_distrib, right_distrib, ha, hb, f_star_a_a_zero_imp_f_star_a_b_zero]
   zero_mem' := by simp
   smul_mem' c x hx := by
     rw [Set.mem_setOf_eq] at hx
@@ -51,16 +51,16 @@ instance N (f : A →ₚ[ℂ] ℂ) : Submodule ℂ (WithFunctional A f) where
 
 -- Begin code from Eric Wieser
 -- noncomputability should be fixed in by Eric Wieser's bug fix
-noncomputable def mySesquilinear :
+noncomputable def sq :
   (WithFunctional A f) →ₗ⋆[ℂ] (WithFunctional A f) →ₗ[ℂ] ℂ :=
   (LinearMap.mul ℂ (WithFunctional A f)).comp
   (starLinearEquiv ℂ (A := (WithFunctional A f)) :
     (WithFunctional A f) →ₗ⋆[ℂ] (WithFunctional A f))
     |>.compr₂ₛₗ (f.comp (ofFunctionalLinear f))
 
---@[simp]
-theorem mySesquilinear_apply (x y : (WithFunctional A f)) :
-  mySesquilinear f x y = f (star x * y) := rfl
+@[simp]
+theorem sq_apply (x y : (WithFunctional A f)) :
+  sq f x y = f (star x * y) := rfl
 -- End code from Eric Wieser
 
 -- I believe this sucessfully erases the norm
@@ -69,64 +69,45 @@ def myQuot := (WithFunctional A f) ⧸ (N f)
 instance : AddCommGroup (myQuot f) := by unfold myQuot; infer_instance
 instance : Module ℂ (myQuot f) := by unfold myQuot; infer_instance
 
-theorem helper (a : WithFunctional A f) : N f ≤ LinearMap.ker ((mySesquilinear f a)) := by
+theorem sq_well_defined (a : WithFunctional A f) : N f ≤ LinearMap.ker ((sq f a)) := by
   intro b bh
   have hab := CS_with_functional f a b
   rw [bh, mul_zero] at hab
   norm_cast at hab
   rwa [sq_nonpos_iff, norm_eq_zero] at hab
 
-noncomputable def myHalf (p : WithFunctional A f) : WithFunctional A f ⧸ N f →ₗ[ℂ] ℂ
-  := Submodule.liftQ (N f) (mySesquilinear f p) (helper f p)
-
-noncomputable instance myHalfSQ :
-  LinearMap (starRingEnd ℂ) (WithFunctional A f) (WithFunctional A f ⧸ N f →ₗ[ℂ] ℂ) where
-  toFun := myHalf f
+noncomputable instance half_sq :
+  A →ₗ⋆[ℂ] WithFunctional A f ⧸ N f →ₗ[ℂ] ℂ where
+  toFun p := Submodule.liftQ (N f) (sq f p) (sq_well_defined f p)
   map_add' a b := by
-    unfold myHalf
     simp only [map_add]
     ext x
-    simp [mySesquilinear_apply]
+    simp
   map_smul' a b := by
-    unfold myHalf
     ext x
-    simp [mySesquilinear_apply]
+    simp
 
-theorem halfHelper : N f ≤ LinearMap.ker (myHalfSQ f) := by
+theorem half_sq_well_defined : N f ≤ LinearMap.ker (half_sq f) := by
   intro a ah
-  change (myHalf f) a = 0
-  unfold myHalf
+  change Submodule.liftQ (N f) (sq f a) (sq_well_defined f a) = 0
   ext b
   have hab := CS_with_functional f a b
   rw [ah, zero_mul] at hab
   norm_cast at hab
   rwa [sq_nonpos_iff, norm_eq_zero] at hab
 
-noncomputable def myInner := Submodule.liftQ (N f) (myHalfSQ f) (halfHelper f)
+noncomputable def inner_f := Submodule.liftQ (N f) (half_sq f) (half_sq_well_defined f)
 
-noncomputable def myF := f.comp (ofFunctionalLinear f)
-
-theorem helperF : N f ≤ LinearMap.ker (myF f) := by
-  intro a ah
-  simp only [LinearMap.mem_ker]
-  have ahzero : f (star a * a) = 0 := ah
-  change f a = 0
-  have hab := CS_with_functional f (1) a
-  rw [ah, mul_zero] at hab
-  norm_cast at hab
-  rwa [sq_nonpos_iff, norm_eq_zero, one_mul] at hab
-
-noncomputable def liftedF := Submodule.liftQ (N f) (myF f) (helperF f)
-
-theorem fEquiv (a b : WithFunctional A f) :
-  ((myInner f) (Submodule.Quotient.mk a)) (Submodule.Quotient.mk b) = mySesquilinear f a b := by rfl
+@[simp]
+theorem inner_f_def (a b : WithFunctional A f) :
+  ((inner_f f) (Submodule.Quotient.mk a)) (Submodule.Quotient.mk b) = sq f a b := by rfl
 
 noncomputable instance myInnerProductSpace : InnerProductSpace.Core ℂ (myQuot f) where
-  inner a b := myInner f a b
+  inner a b := inner_f f a b
   conj_inner_symm a b := by
     induction a using Submodule.Quotient.induction_on with | _ a
     induction b using Submodule.Quotient.induction_on with | _ b
-    simp only [fEquiv f b a, mySesquilinear_apply, fEquiv f a b]
+    simp only [sq_apply, inner_f_def f a b]
     change star (f (star b * a)) = f (star a * b)
     rw [← map_star]
     simp
@@ -137,7 +118,7 @@ noncomputable instance myInnerProductSpace : InnerProductSpace.Core ℂ (myQuot 
     have := f_of_x_star_x_is_real f (star a)
     rw [star_star] at this
     rw [← this] at zeroleq
-    simp [fEquiv f a a, mySesquilinear_apply, Complex.zero_le_real.mp zeroleq]
+    simp [Complex.zero_le_real.mp zeroleq]
   add_left a b c := by simp
   smul_left a b c := by simp
   definite a := by
@@ -159,19 +140,15 @@ noncomputable instance : InnerProductSpace ℂ (H f) := by unfold H; infer_insta
 -- or UniformSpace.Completion.innerProductSpace (E := myQuot f) (𝕜 := ℂ)
 
 protected
-instance HilbertSpaceFromFunctional : HilbertSpace ℂ (H f) where
+instance : HilbertSpace ℂ (H f) where
 
-#check GNS.HilbertSpaceFromFunctional f
 
 def aToMyQuot (a : A) : myQuot f := Submodule.Quotient.mk a
 def myQuotToH (a : myQuot f) : H f := UniformSpace.Completion.coe' a
 def aToH (a : A) : H f := myQuotToH f (aToMyQuot f a)
 
-variable (b : WithFunctional A f)
-#check (myInnerProductSpace f).inner (Submodule.Quotient.mk b) (Submodule.Quotient.mk b)
-
 @[simp]
-theorem myInner_apply (a : WithFunctional A f) (b : WithFunctional A f) :
+theorem inner_f_apply_on_quot_mk (a : WithFunctional A f) (b : WithFunctional A f) :
   (myInnerProductSpace f).inner (Submodule.Quotient.mk a) (Submodule.Quotient.mk b)
     = f (star a * b) := by rfl
 

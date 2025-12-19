@@ -23,6 +23,7 @@ noncomputable instance fSemiInnerProdSpace : PreInnerProductSpace.Core ℂ (A) w
   add_left x y z := by rw [star_add, add_mul, map_add]
   smul_left x y r := by simp
 
+-- Cauchy-Schwarz results for f
 theorem CS_with_functional (x y : A) :
   norm (f (star x * y)) ^ 2 ≤ f (star x * x) * f (star y * y) := by
   have cs := InnerProductSpace.Core.inner_mul_inner_self_le (c := fSemiInnerProdSpace f) x y
@@ -35,16 +36,10 @@ theorem CS_with_functional (x y : A) :
   have (a : A) (b : A) : (fSemiInnerProdSpace f).inner a b = f (star a * b) := by exact rfl
   simp_all only [ofReal_mul, RCLike.re_to_complex, coe_algebraMap, ← pow_two]
 
-lemma aux (a b : A) (h : f (star a * a) = 0) : f (star a * b) = 0 := by
+lemma f_star_a_a_zero_imp_f_star_a_b_zero
+  (a b : A) (h : f (star a * a) = 0) : f (star a * b) = 0 := by
   have hab := CS_with_functional f a b
   rw [h, zero_mul] at hab
-  rw [← norm_eq_zero, ← sq_nonpos_iff]
+  rw [← norm_eq_zero]
   norm_cast at hab
-
-def N (f : A →ₚ[ℂ] ℂ) : Submodule ℂ A where
-  carrier := {a : A | f (star a * a) = 0}
-  add_mem' := by
-    intro a b ha hb
-    simp_all [Set.mem_setOf_eq, (aux f a b ha), (aux f b a hb), left_distrib, right_distrib]
-  zero_mem' := by simp
-  smul_mem' c x hx := by rw [Set.mem_setOf_eq] at hx; simp [hx]
+  exact (_root_.sq_nonpos_iff ‖f (star a * b)‖).mp hab

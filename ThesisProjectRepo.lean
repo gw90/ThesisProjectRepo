@@ -1,1 +1,5 @@
-import ThesisProjectRepo.myQuot
+import ThesisProjectRepo.Construction
+import ThesisProjectRepo.HelperTheorems
+import ThesisProjectRepo.Morphism
+
+#min_imports

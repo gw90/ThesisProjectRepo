@@ -1,5 +1,5 @@
 import Mathlib.Algebra.DirectSum.Basic
-import ThesisProjectRepo.AguilarMorphisms
+import ThesisProjectRepo.Morphism
 
 open ComplexConjugate
 open scoped ComplexOrder
@@ -26,4 +26,3 @@ def BigH := ⨁ state, GNS.H state (A := A)
 variable (s : state (A := A))
 #check s.functional
 #check ⨁ state, GNS.H state (A := A)
-
