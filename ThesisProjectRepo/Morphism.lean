@@ -190,14 +190,8 @@ def π : StarAlgHom ℂ (WithFunctional A f) (H f →L[ℂ] H f) where
     simp [π_OfA, π_onCompletion_onQuot_equiv, π_nonCont_eq_π_on_input, π_OfA_onQuot,
       AWithToAWithLin, Completion.coe_add]
   commutes' r := by
-    ext b
-    simp only [← RingHom.smulOneHom_eq_algebraMap, RingHom.smulOneHom_apply,
-      LinearMap.coe_mk, AddHom.coe_mk, π_OfA, coe_smul', coe_mk', Pi.smul_apply, one_apply]
+    simp only [← RingHom.smulOneHom_eq_algebraMap, RingHom.smulOneHom_apply, π_OfA]
     congr
-    induction b using induction_on with
-    | hp => exact (isClosed_eq (by continuity) (by continuity))
-    | ih b
-    induction b using Submodule.Quotient.induction_on with | _ b
     ext c
     simp only [π_onQuot, LinearMap.mkContinuousOfExistsBound_apply]
     induction c using Submodule.Quotient.induction_on
