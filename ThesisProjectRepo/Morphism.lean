@@ -1,36 +1,19 @@
 import Mathlib.Analysis.InnerProductSpace.Adjoint
 import ThesisProjectRepo.Construction
 
-open ComplexConjugate
 open scoped ComplexOrder
 open Complex
-
 open UniformSpace
 open UniformSpace.Completion
 open Submodule
+open ContinuousLinearMap
 
 variable {A : Type*} [CStarAlgebra A] [PartialOrder A] [StarOrderedRing A]
 variable (f : A →ₚ[ℂ] ℂ)
 
 open GNS
 
-noncomputable
-instance A_A_mul (a : WithFunctional A f) : WithFunctional A f →ₗ[ℂ] WithFunctional A f
-  := (ContinuousLinearMap.mul ℂ (WithFunctional A f)) a
-
--- I golfed this so much that it's basically unreadable now.
--- Refer to commit from before december 17 for better
-theorem A_A_mul_well_defined_onQuot (a : WithFunctional A f) :
-  GNS.N f ≤ Submodule.comap (A_A_mul f a) (GNS.N f) := by
-  intro x xh
-  have hab := CS_with_functional f ((star a) * (a * x)) x
-  rw [star_mul, star_star, xh, mul_zero] at hab
-  norm_cast at hab
-  apply (_root_.sq_nonpos_iff ‖f (star (a * x) * a * x)‖).mp at hab
-  rwa [norm_eq_zero, mul_assoc] at hab
-
 -- define the helper positive linear functional g
--- this is excessively golfed as of December 17 too
 def g (b : A) : A →ₚ[ℂ] ℂ where
   toFun x := f (star b * x * b)
   map_add' x y := by rw [mul_add, add_mul, map_add]
@@ -50,6 +33,19 @@ lemma g_apply (b : WithFunctional A f) (x : WithFunctional A f) :
   f (star b * x * b) = (g f b) x := by rfl
 
 variable (a : WithFunctional A f)
+
+noncomputable
+instance A_A_mul : WithFunctional A f →ₗ[ℂ] WithFunctional A f
+  := (mul ℂ (WithFunctional A f)) a
+
+theorem A_A_mul_well_defined_onQuot :
+  GNS.N f ≤ Submodule.comap (A_A_mul f a) (GNS.N f) := by
+  intro x xh
+  have hab := CS_with_functional f ((star a) * (a * x)) x
+  rw [star_mul, star_star, xh, mul_zero] at hab
+  norm_cast at hab
+  apply (_root_.sq_nonpos_iff ‖f (star (a * x) * a * x)‖).mp at hab
+  rwa [norm_eq_zero, mul_assoc] at hab
 
 noncomputable
 def π_OfA_onQuot : (A_mod_N f) →ₗ[ℂ] (A_mod_N f) where
@@ -143,8 +139,6 @@ def π_OfA (a : WithFunctional A f) : H f →L[ℂ] H f where
     simp
   cont := continuous_map
 
-open ContinuousLinearMap
-
 noncomputable
 def π : StarAlgHom ℂ (WithFunctional A f) (H f →L[ℂ] H f) where
   toFun := π_OfA f
@@ -173,7 +167,7 @@ def π : StarAlgHom ℂ (WithFunctional A f) (H f →L[ℂ] H f) where
     rfl
   map_add' x y := by
     ext c
-    rw [ContinuousLinearMap.add_apply]
+    rw [add_apply]
     induction c using Completion.induction_on with
     | hp => exact (isClosed_eq (by continuity) (by continuity))
     | ih c
@@ -187,7 +181,7 @@ def π : StarAlgHom ℂ (WithFunctional A f) (H f →L[ℂ] H f) where
     induction c using Quotient.induction_on
     simp
   map_star' a := by
-    refine (ContinuousLinearMap.eq_adjoint_iff (π_OfA f (star a)) (π_OfA f a)).mpr ?_
+    refine (eq_adjoint_iff (π_OfA f (star a)) (π_OfA f a)).mpr ?_
     intro x y
     induction x using Completion.induction_on with
     | hp => exact (isClosed_eq (by continuity)
