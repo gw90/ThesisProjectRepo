@@ -44,10 +44,10 @@ instance AWithToMyQuotLin (a : WithFunctional A f) : WithFunctional A f →ₗ[�
 theorem helper (a : WithFunctional A f) :
   GNS.N f ≤ Submodule.comap (AWithToAWithLinCont f a) (GNS.N f) := by
   intro x xh
-  have hab := aup_6_2_15ii f (star (a*x) * a) (star x)
+  have hab := CS_with_functional f ((star a) * (a * x)) x
   rw [star_mul, star_star, xh, mul_zero] at hab
   norm_cast at hab
-  rwa [sq_nonpos_iff, norm_eq_zero, mul_assoc, ← star_mul] at hab
+  rwa [sq_nonpos_iff, norm_eq_zero, mul_assoc] at hab
 
 -- define the helper positive linear functional g
 -- this is excessively golfed as of December 17 too
@@ -95,7 +95,7 @@ lemma boundedUnitBall :
   induction b using Submodule.Quotient.induction_on with | _ b
   rw [myInner_apply, RCLike.re_to_complex] at bh
   have bh' : √(f (star b * b)).re ≤ 1 := by linarith
-  have prodInR := fOfxStarxIsReal f (star b)
+  have prodInR := f_of_x_star_x_is_real f (star b)
   have staraaPos := (mul_star_self_nonneg (star a : A))
   have starbPos := PositiveLinearMap.map_nonneg f (mul_star_self_nonneg (star b : A))
   rw [star_star, πa_apply] at *
@@ -112,7 +112,7 @@ lemma boundedUnitBall :
   rw [g_apply]
   have : (g f b) 1 = f (star b * b) := by simp [← g_apply f b 1]
   have gval_real : ((g f b) (star a * a)).re = ((g f b) (star a * a)) := by
-    have := fOfxStarxIsReal (g f b) (star a); rwa [star_star] at this
+    have := f_of_x_star_x_is_real (g f b) (star a); rwa [star_star] at this
   have gval_pos : 0 ≤ ((g f b) (star a * a)).re := by
     have := PositiveLinearMap.map_nonneg (g f b) (mul_star_self_nonneg (star a : A))
     rw [star_star, ← gval_real] at this

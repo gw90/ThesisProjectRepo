@@ -1,4 +1,3 @@
-import ThesisProjectRepo.AupetitTheorems
 import Mathlib.Analysis.InnerProductSpace.Completion
 import ThesisProjectRepo.AupetitTheorems
 
@@ -72,8 +71,8 @@ instance : Module ℂ (myQuot f) := by unfold myQuot; infer_instance
 
 theorem helper (a : WithFunctional A f) : N f ≤ LinearMap.ker ((mySesquilinear f a)) := by
   intro b bh
-  have hab := aup_6_2_15ii f (star a) (star b)
-  rw [star_star, star_star, bh, mul_zero] at hab
+  have hab := CS_with_functional f a b
+  rw [bh, mul_zero] at hab
   norm_cast at hab
   rwa [sq_nonpos_iff, norm_eq_zero] at hab
 
@@ -98,8 +97,8 @@ theorem halfHelper : N f ≤ LinearMap.ker (myHalfSQ f) := by
   change (myHalf f) a = 0
   unfold myHalf
   ext b
-  have hab := aup_6_2_15ii f (star a) (star b)
-  rw [star_star, star_star, ah, zero_mul] at hab
+  have hab := CS_with_functional f a b
+  rw [ah, zero_mul] at hab
   norm_cast at hab
   rwa [sq_nonpos_iff, norm_eq_zero] at hab
 
@@ -112,8 +111,8 @@ theorem helperF : N f ≤ LinearMap.ker (myF f) := by
   simp only [LinearMap.mem_ker]
   have ahzero : f (star a * a) = 0 := ah
   change f a = 0
-  have hab := aup_6_2_15ii f (1) (star a)
-  rw [star_star, ah, mul_zero] at hab
+  have hab := CS_with_functional f (1) a
+  rw [ah, mul_zero] at hab
   norm_cast at hab
   rwa [sq_nonpos_iff, norm_eq_zero, one_mul] at hab
 
@@ -127,12 +126,15 @@ noncomputable instance myInnerProductSpace : InnerProductSpace.Core ℂ (myQuot 
   conj_inner_symm a b := by
     induction a using Submodule.Quotient.induction_on with | _ a
     induction b using Submodule.Quotient.induction_on with | _ b
-    simp [fEquiv f a b, fEquiv f b a, mySesquilinear_apply, ← aupetit_6_2_15i f (star b * a)]
+    simp only [fEquiv f b a, mySesquilinear_apply, fEquiv f a b]
+    change star (f (star b * a)) = f (star a * b)
+    rw [← map_star]
+    simp
   re_inner_nonneg a := by
     induction a using Submodule.Quotient.induction_on with | _ a
     have zeroleq : 0 ≤ f (star a * a) :=
       PositiveLinearMap.map_nonneg f (star_mul_self_nonneg (ofFunctional f a))
-    have := fOfxStarxIsReal f (star a)
+    have := f_of_x_star_x_is_real f (star a)
     rw [star_star] at this
     rw [← this] at zeroleq
     simp [fEquiv f a a, mySesquilinear_apply, Complex.zero_le_real.mp zeroleq]
