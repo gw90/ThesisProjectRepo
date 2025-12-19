@@ -14,35 +14,14 @@ variable (f : A →ₚ[ℂ] ℂ)
 
 open GNS
 
--- step 1 : A → A
-noncomputable instance AtoALinCont (a : A) : A →L[ℂ] A
-  := (ContinuousLinearMap.mul ℂ A) a
--- this is linear and continuous
-
--- step 2 : WithFunctional A f → WithFunctional A f
-noncomputable
-instance AWithToAWithLinCont (a : WithFunctional A f) : WithFunctional A f →L[ℂ] WithFunctional A f
-  := (ContinuousLinearMap.mul ℂ (WithFunctional A f)) a
--- this is linear and continuous
 noncomputable
 instance AWithToAWithLin (a : WithFunctional A f) : WithFunctional A f →ₗ[ℂ] WithFunctional A f
-  := AWithToAWithLinCont f a
--- this is the same, but not continuous
+  := (ContinuousLinearMap.mul ℂ (WithFunctional A f)) a
 
--- step 3 : WithFunctional A f → myQuot f
-noncomputable
-instance AWithToMyQuotLin (a : WithFunctional A f) : WithFunctional A f →ₗ[ℂ] myQuot f where
-  toFun b := aToMyQuot f (((ContinuousLinearMap.mul ℂ (WithFunctional A f)) a) b)
-  map_add' c d := by unfold aToMyQuot; rw [ContinuousLinearMap.mul_apply', mul_add]; simp
-  map_smul' c d := by unfold aToMyQuot; simp
--- only linear, not continuous
-
--- step 4 : myQuot f → myQuot f
--- does not depend on step 3
 -- I golfed this so much that it's basically unreadable now.
 -- Refer to commit from before december 17 for better
 theorem helper (a : WithFunctional A f) :
-  GNS.N f ≤ Submodule.comap (AWithToAWithLinCont f a) (GNS.N f) := by
+  GNS.N f ≤ Submodule.comap (AWithToAWithLin f a) (GNS.N f) := by
   intro x xh
   have hab := CS_with_functional f ((star a) * (a * x)) x
   rw [star_mul, star_star, xh, mul_zero] at hab
@@ -66,12 +45,6 @@ def g (b : A) : A →ₚ[ℂ] ℂ where
       ← mul_sub (star b) (z * b) (y * b), ← sub_mul, ← mul_assoc,
       hq, ← mul_assoc, mul_assoc (star b * star q), ← star_mul]
     exact PositiveLinearMap.map_nonneg f (star_mul_self_nonneg (q * b))
-
--- this might be unnecessary
-instance (b : A) : ContinuousLinearMap (σ := RingHom.id ℂ) (M := A) (M₂ := ℂ) where
-  toFun := g f b
-  map_add' := map_add (g f b)
-  map_smul' := PositiveLinearMap.map_smul_of_tower (g f b)
 
 @[simp]
 lemma g_apply (b : WithFunctional A f) (x : WithFunctional A f) :
@@ -158,33 +131,25 @@ noncomputable
 def π_OfA (a : WithFunctional A f) : H f →L[ℂ] H f where
   toFun := UniformSpace.Completion.map (π_onQuot f a)
   map_add' x y := by
-    refine induction_on x
-      (isClosed_eq ((continuous_map (f := π_onQuot f a)).comp
-        (Continuous.add (continuous_id) (continuous_const (y := y))))
-        (continuous_id.comp (Continuous.add (continuous_map (f := π_onQuot f a))
-          (continuous_const (y := Completion.map (⇑(π_onQuot f a)) y))))) ?_
-    intro b
-    refine induction_on y
-      (isClosed_eq ((continuous_map (f := π_onQuot f a)).comp
-        (Continuous.add (continuous_const (y := coe' b)) (continuous_id)))
-        (continuous_id.comp (Continuous.add
-          (continuous_const (y := Completion.map (⇑(π_onQuot f a)) ↑b))
-          (continuous_map (f := (⇑(π_onQuot f a))))))) ?_
-    intro c
+    induction x using induction_on with
+    | hp => exact (isClosed_eq ((continuous_map).comp (by continuity))
+        (Continuous.add (continuous_map) (continuous_const)))
+    | ih x
+    induction y using induction_on with
+    | hp => exact (isClosed_eq ((continuous_map).comp (by continuity))
+        (Continuous.add (continuous_const) (continuous_map)))
+    | ih y
     rw [← coe_add]
     simp only [π_onCompletion_onQuot_equiv, map_add]
     rw [coe_add]
   map_smul' x y := by
-    refine induction_on y
-      (isClosed_eq ((continuous_map (f := π_onQuot f a)).comp
-        (continuous_const_smul x))
-        (continuous_id.comp (Continuous.smul
-          (continuous_const (y := x))
-          (continuous_map (f := (⇑(π_onQuot f a))))))) ?_
-    intro c
+    induction y using induction_on with
+    | hp => exact (isClosed_eq ((continuous_map).comp (continuous_const_smul x))
+        (Continuous.smul (continuous_const) (continuous_map)))
+    | ih y
     rw [← Completion.coe_smul, π_onCompletion_onQuot_equiv]
     simp[π_onCompletion_onQuot_equiv]
-  cont := UniformSpace.Completion.continuous_map (f := (π_onQuot f a))
+  cont := continuous_map
 
 open ContinuousLinearMap
 
@@ -193,63 +158,62 @@ def π : StarAlgHom ℂ (WithFunctional A f) (H f →L[ℂ] H f) where
   toFun := π_OfA f
   map_one' := by
     ext b
-    refine induction_on b (isClosed_eq (by continuity) (by continuity)) ?_
-    intro a
-    induction a using Submodule.Quotient.induction_on with | _ a
+    induction b using induction_on with
+    | hp => exact (isClosed_eq (by continuity) (by continuity))
+    | ih b
+    induction b using Submodule.Quotient.induction_on
     simp [π_OfA, π_onCompletion_onQuot_equiv]
   map_mul' a b := by
     ext c
-    refine induction_on c (isClosed_eq (by continuity)
-          (ContinuousLinearMap.continuous ((π_OfA f (a)).comp (π_OfA f (b))))) ?_
-    intro d
-    induction d using Submodule.Quotient.induction_on with | _ d
+    induction c using induction_on with
+    | hp => exact (isClosed_eq (by continuity)
+          (ContinuousLinearMap.continuous ((π_OfA f (a)).comp (π_OfA f (b)))))
+    | ih c
+    induction c using Submodule.Quotient.induction_on
     simp [π_OfA, π_onCompletion_onQuot_equiv, ← mul_assoc]
   map_zero' := by
     ext y
-    refine induction_on y (isClosed_eq (by continuity) (by continuity)) ?_
-    intro b
-    induction b using Submodule.Quotient.induction_on with | _ b
+    induction y using induction_on with
+    | hp => exact (isClosed_eq (by continuity) (by continuity))
+    | ih y
+    induction y using Submodule.Quotient.induction_on
     simp [π_OfA, π_onCompletion_onQuot_equiv, π_nonCont_eq_π_on_input, π_OfA_onQuot,
-      AWithToAWithLin, AWithToAWithLinCont]
+      AWithToAWithLin]
     rfl
   map_add' x y := by
     ext c
     rw [ContinuousLinearMap.add_apply]
-    refine induction_on c (isClosed_eq (by continuity) (by continuity)) ?_
-    intro b
-    induction b using Submodule.Quotient.induction_on with | _ b
+    induction c using induction_on with
+    | hp => exact (isClosed_eq (by continuity) (by continuity))
+    | ih c
+    induction c using Submodule.Quotient.induction_on
     simp [π_OfA, π_onCompletion_onQuot_equiv, π_nonCont_eq_π_on_input, π_OfA_onQuot,
-      AWithToAWithLin, AWithToAWithLinCont, Completion.coe_add]
+      AWithToAWithLin, Completion.coe_add]
   commutes' r := by
     ext b
     simp only [← RingHom.smulOneHom_eq_algebraMap, RingHom.smulOneHom_apply,
       LinearMap.coe_mk, AddHom.coe_mk, π_OfA, coe_smul', coe_mk', Pi.smul_apply, one_apply]
     congr
-    refine induction_on b (isClosed_eq (by continuity) (by continuity)) ?_
-    intro d
-    induction d using Submodule.Quotient.induction_on with | _ d
+    induction b using induction_on with
+    | hp => exact (isClosed_eq (by continuity) (by continuity))
+    | ih b
+    induction b using Submodule.Quotient.induction_on with | _ b
     ext c
     simp only [π_onQuot, LinearMap.mkContinuousOfExistsBound_apply]
-    induction c using Submodule.Quotient.induction_on with | _ c
+    induction c using Submodule.Quotient.induction_on
     simp [πa_OfA_onQuot_apply]
   map_star' a := by
-    refine (ContinuousLinearMap.eq_adjoint_iff (π_OfA f (star a))
-      (π_OfA f a)).mpr ?_
+    refine (ContinuousLinearMap.eq_adjoint_iff (π_OfA f (star a)) (π_OfA f a)).mpr ?_
     intro x y
-    refine induction_on x
-      (isClosed_eq (by continuity)
-        (Continuous.inner (continuous_id) (continuous_const (y := (π_OfA f a) y))))
-        ?_
-    intro x
-    refine induction_on y
-      (isClosed_eq
-        (Continuous.inner (continuous_const (y := (((π_OfA f) (star a)) (coe' x))))
-          (continuous_id))
-        (Continuous.inner
-          (continuous_const (y := coe' x))
-          (ContinuousLinearMap.continuous (((π_OfA f) a))))) ?_
-    intro y
-    induction x using Submodule.Quotient.induction_on with | _ x
-    induction y using Submodule.Quotient.induction_on with | _ y
+    induction x using induction_on with
+    | hp => exact (isClosed_eq (by continuity)
+      (Continuous.inner (continuous_id) (continuous_const)))
+    | ih x
+    induction y using induction_on with
+    | hp => exact (isClosed_eq (Continuous.inner (continuous_const) (continuous_id))
+        (Continuous.inner (by continuity) (by continuity)))
+    | ih y
+    induction x using Submodule.Quotient.induction_on
+    induction y using Submodule.Quotient.induction_on
     have (a b : myQuot f) : inner ℂ (coe' a) (coe' b) = inner_f f a b := by rw [inner_coe]; rfl
     simp [π_OfA, π_onCompletion_onQuot_equiv, this, mul_assoc]
