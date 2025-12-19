@@ -33,8 +33,7 @@ theorem helper (a : WithFunctional A f) :
 -- this is excessively golfed as of December 17 too
 def g (b : A) : A →ₚ[ℂ] ℂ where
   toFun x := f (star b * x * b)
-  map_add' x y := by
-    rw [mul_add, add_mul, map_add]
+  map_add' x y := by rw [mul_add, add_mul, map_add]
   map_smul' m x := by simp
   monotone' := by
     unfold Monotone
@@ -64,8 +63,7 @@ lemma πa_OfA_onQuot_apply (b : WithFunctional A f) :
 lemma boundedUnitBall :
   (∀ z ∈ Metric.ball 0 1, ‖(π_OfA_onQuot f a) z‖ ≤ ‖a‖) := by
   intro b bh
-  rw [Metric.mem_ball, dist_zero_right,
-    show ‖b‖ = √(RCLike.re ((myInnerProductSpace f).inner b b)) from rfl] at bh
+  rw [Metric.mem_ball, dist_zero_right, InnerProductSpace.Core.norm_eq_sqrt_re_inner] at bh
   induction b using Submodule.Quotient.induction_on with | _ b
   rw [inner_f_apply_on_quot_mk, RCLike.re_to_complex] at bh
   have bh' : √(f (star b * b)).re ≤ 1 := by linarith
@@ -75,24 +73,19 @@ lemma boundedUnitBall :
   rw [star_star, πa_OfA_onQuot_apply] at *
   have bh2 : (f (star b * b)).re ≤ 1 := (Real.sqrt_le_one (x := (f (star b * b)).re)).mp bh'
   have hyp1 : f (star b * b) ≤ 1 := by rw [← prodInR]; norm_cast
-  change ‖aToMyQuot f (a * b)‖ ≤ ‖a‖
-  rw [show
-      ‖aToMyQuot f (a * b)‖ =
-        √(RCLike.re ((myInnerProductSpace f).inner
-          (Submodule.Quotient.mk (a * b)) (Submodule.Quotient.mk (a * b))))
-      from rfl,
-    inner_f_apply_on_quot_mk, star_mul, RCLike.re_to_complex, ← mul_assoc]
+  rw [InnerProductSpace.Core.norm_eq_sqrt_re_inner, inner_f_apply_on_quot_mk, star_mul,
+    RCLike.re_to_complex, ← mul_assoc]
   nth_rw 2 [mul_assoc]
   rw [g_apply]
-  have : (g f b) 1 = f (star b * b) := by simp [← g_apply f b 1]
+  have g_of_one : (g f b) 1 = f (star b * b) := by simp [← g_apply f b 1]
+  have g_of_star_a_a_real := f_of_x_star_x_is_real (g f b) (star a)
   have gval_real : ((g f b) (star a * a)).re = ((g f b) (star a * a)) := by
-    have := f_of_x_star_x_is_real (g f b) (star a); rwa [star_star] at this
+    rwa [star_star] at g_of_star_a_a_real
+  have g_pos := PositiveLinearMap.map_nonneg (g f b) (mul_star_self_nonneg (star a : A))
   have gval_pos : 0 ≤ ((g f b) (star a * a)).re := by
-    have := PositiveLinearMap.map_nonneg (g f b) (mul_star_self_nonneg (star a : A))
-    rw [star_star, ← gval_real] at this
-    simpa
+    rwa [star_star, ← gval_real, zero_le_real] at g_pos
   have step2 := PositiveLinearMap.norm_apply_le_of_nonneg (g f b) (star a * a) staraaPos
-  rw [this, ← gval_real, norm_real, Real.norm_eq_abs, abs_of_nonneg gval_pos] at step2
+  rw [g_of_one, ← gval_real, norm_real, Real.norm_eq_abs, abs_of_nonneg gval_pos] at step2
   have step3 : ‖f (star b * b)‖ * ‖star a * a‖ ≤ 1 * ‖star a * a‖ := by
     nlinarith [norm_nonneg (star a * a), norm_nonneg (f (star b * b)),
       (CStarAlgebra.norm_le_one_iff_of_nonneg (f (star b * b)) starbPos).mpr hyp1]
@@ -129,7 +122,7 @@ lemma π_onCompletion_onQuot_equiv (b : myQuot f) :
 
 noncomputable
 def π_OfA (a : WithFunctional A f) : H f →L[ℂ] H f where
-  toFun := UniformSpace.Completion.map (π_onQuot f a)
+  toFun := Completion.map (π_onQuot f a)
   map_add' x y := by
     induction x using Completion.induction_on with
     | hp => exact (isClosed_eq ((continuous_map).comp (by continuity))

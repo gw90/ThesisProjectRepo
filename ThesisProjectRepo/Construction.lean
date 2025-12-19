@@ -58,6 +58,8 @@ noncomputable def sq :
     (WithFunctional A f) →ₗ⋆[ℂ] (WithFunctional A f))
     |>.compr₂ₛₗ (f.comp (ofFunctionalLinear f))
 
+
+omit [StarOrderedRing A] in
 @[simp]
 theorem sq_apply (x y : (WithFunctional A f)) :
   sq f x y = f (star x * y) := rfl
