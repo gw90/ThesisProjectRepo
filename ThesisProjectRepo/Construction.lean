@@ -73,7 +73,7 @@ instance : Module ℂ (A_mod_N f) := by unfold A_mod_N; infer_instance
 
 theorem sq_well_defined (a : WithFunctional A f) : N f ≤ LinearMap.ker ((sq f a)) := by
   intro b bh
-  have hab := CS_with_functional f a b
+  have hab := f_inner_norm_sq_self_le f a b
   rw [bh, mul_zero] at hab
   norm_cast at hab
   rwa [sq_nonpos_iff, norm_eq_zero] at hab
@@ -93,7 +93,7 @@ theorem half_sq_well_defined : N f ≤ LinearMap.ker (half_sq f) := by
   intro a ah
   change Submodule.liftQ (N f) (sq f a) (sq_well_defined f a) = 0
   ext b
-  have hab := CS_with_functional f a b
+  have hab := f_inner_norm_sq_self_le f a b
   rw [ah, zero_mul] at hab
   norm_cast at hab
   rwa [sq_nonpos_iff, norm_eq_zero] at hab

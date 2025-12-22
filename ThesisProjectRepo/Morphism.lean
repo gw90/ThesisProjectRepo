@@ -1,5 +1,7 @@
 import Mathlib.Analysis.InnerProductSpace.Adjoint
 import ThesisProjectRepo.Construction
+import Mathlib.Analysis.CStarAlgebra.ContinuousLinearMap
+import Mathlib.Analysis.CStarAlgebra.Hom
 
 open scoped ComplexOrder
 open Complex
@@ -41,7 +43,7 @@ instance A_A_mul : WithFunctional A f →ₗ[ℂ] WithFunctional A f
 theorem A_A_mul_well_defined_onQuot :
   GNS.N f ≤ Submodule.comap (A_A_mul f a) (GNS.N f) := by
   intro x xh
-  have hab := CS_with_functional f ((star a) * (a * x)) x
+  have hab := f_inner_norm_sq_self_le f ((star a) * (a * x)) x
   rw [star_mul, star_star, xh, mul_zero] at hab
   norm_cast at hab
   apply (_root_.sq_nonpos_iff ‖f (star (a * x) * a * x)‖).mp at hab
@@ -140,7 +142,7 @@ def π_OfA (a : WithFunctional A f) : H f →L[ℂ] H f where
   cont := continuous_map
 
 noncomputable
-def π : StarAlgHom ℂ (WithFunctional A f) (H f →L[ℂ] H f) where
+def π : StarAlgHom ℂ A (H f →L[ℂ] H f) where
   toFun := π_OfA f
   map_one' := by
     ext b
@@ -195,3 +197,15 @@ def π : StarAlgHom ℂ (WithFunctional A f) (H f →L[ℂ] H f) where
     induction y using Quotient.induction_on
     have (a b : A_mod_N f) : inner ℂ (coe' a) (coe' b) = inner_f f a b := by rw [inner_coe]; rfl
     simp [π_OfA, this, mul_assoc]
+
+theorem StarAlgHom_bounded {A B : Type*} [CStarAlgebra A] [CStarAlgebra B]
+  (f : NonUnitalStarAlgHom ℂ A B) (x : A) :
+    (‖f x‖ ≤ 1 * ‖x‖) := by simp [NonUnitalStarAlgHom.norm_apply_le]
+
+theorem StarAlgHom_continuous {A B : Type*} [CStarAlgebra A] [CStarAlgebra B]
+  (f : NonUnitalStarAlgHom ℂ A B) :
+    Continuous (f : A → B) :=
+  continuous_of_linear_of_bound (f.map_add) (f.map_smul) (StarAlgHom_bounded f)
+
+theorem π_continuous : Continuous (π f) :=
+  StarAlgHom_continuous (A := A) (B := (H f →L[ℂ] H f)) (π f)
